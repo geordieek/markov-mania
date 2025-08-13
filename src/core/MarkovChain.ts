@@ -17,10 +17,10 @@ export class MarkovChain {
   }
 
   /**
-   * Train the Markov chain with a given sequences
+   * Train the Markov chain with musical sequences
    * This builds the state transition probability matrix
    *
-   * @param sequences Array of input sequences
+   * @param sequences Array of musical sequences (e.g., note sequences, chord progressions)
    */
   train(sequences: string[][]): void {
     this.trainingData = sequences;
@@ -51,7 +51,7 @@ export class MarkovChain {
 
   /**
    * Create a context key from the current position in the sequence
-   * This is essentially the "memory" of the Markov chain
+   * This represents the "memory" of the Markov chain
    */
   private getContextKey(sequence: string[], position: number): string {
     const context = sequence.slice(position, position + this.config.order);
@@ -60,7 +60,7 @@ export class MarkovChain {
 
   /**
    * Update the transition probability from current context to next element
-   * building the probability distribution for each state
+   * This builds the probability distribution for each state
    */
   private updateTransition(context: string, nextElement: string): void {
     // Get or create the current state
@@ -82,7 +82,7 @@ export class MarkovChain {
 
   /**
    * Normalize transition probabilities to sum to 1.0
-   * ensuring we have a proper probability distribution
+   * This ensures we have a proper probability distribution
    */
   private normalizeProbabilities(): void {
     for (const state of this.states.values()) {
@@ -136,6 +136,7 @@ export class MarkovChain {
 
   /**
    * Select the next element based on current context and transition probabilities
+   * This implements the probabilistic nature of the Markov chain
    */
   private selectNextElement(contextKey: string): string | null {
     const state = this.states.get(contextKey);
@@ -175,6 +176,7 @@ export class MarkovChain {
 
   /**
    * Get statistics about the trained Markov chain
+   * Useful for understanding the learned patterns
    */
   getStats(): {
     totalStates: number;

@@ -4,7 +4,6 @@ import { MarkovConfig } from "../types";
 // Demo 1: Basic Text Generation
 function demonstrateTextGeneration(): void {
   console.log("=== Demo 1: Basic Text Generation ===");
-  console.log("This demonstrates the core Markov chain concept with text.\n");
 
   const config: MarkovConfig = {
     order: 2, // Consider 2 previous words

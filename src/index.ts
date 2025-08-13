@@ -4,6 +4,7 @@
 
 // Export core classes
 export { MarkovChain } from "./core/MarkovChain";
+export { MusicMarkovChain } from "./music/MusicMarkovChain";
 
 // Export types
 export * from "./types";
