@@ -17,6 +17,8 @@ export class MusicMarkovChain extends MarkovChain {
   private musicalKey: string = "C";
   private scale: number[] = [0, 2, 4, 5, 7, 9, 11]; // C major scale (MIDI note numbers)
   private tempo: number = 120; // BPM
+  private minPitch: number = 24; // C2 TODO: Allow this to be set, or use in the input value to help infer it
+  private maxPitch: number = 84; // C6 TODO: Allow this to be set, or use in the input value to help infer it
 
   constructor(config: MarkovConfig) {
     super(config);
@@ -38,6 +40,26 @@ export class MusicMarkovChain extends MarkovChain {
     this.noteChain.train(noteSequences);
     this.chordChain.train(chordProgressions);
     this.rhythmChain.train(rhythmPatterns);
+  }
+
+  /**
+   * Append new musical data to existing training, preserving previous corpus
+   */
+  trainWithMusicAppend(
+    noteSequences: string[][],
+    chordProgressions: string[][],
+    rhythmPatterns: string[][]
+  ): void {
+    (this.noteChain as any).trainAppend?.(noteSequences);
+    (this.chordChain as any).trainAppend?.(chordProgressions);
+    (this.rhythmChain as any).trainAppend?.(rhythmPatterns);
+  }
+
+  /**
+   * Append only melody tokens to the melodic chain
+   */
+  appendMelodySequence(melody: string[]): void {
+    (this.noteChain as any).trainAppend?.([melody]);
   }
 
   /**
@@ -90,6 +112,8 @@ export class MusicMarkovChain extends MarkovChain {
   ): MusicSequence {
     const notes: Note[] = [];
     let currentTime = 0;
+    // Track last MIDI pitch to discourage large unidirectional drifts
+    let lastPitch: number | null = null;
 
     // Convert string representations to actual musical elements
     for (let i = 0; i < melody.length; i++) {
@@ -104,14 +128,29 @@ export class MusicMarkovChain extends MarkovChain {
         const duration = this.parseRhythm(rhythmStr);
         const velocity = this.calculateVelocity(noteStr, rhythmStr);
 
+        // Constrain pitch to range to avoid register drift and apply small mean-reversion bias
+        let clampedPitch = Math.max(this.minPitch, Math.min(this.maxPitch, note.pitch));
+        if (lastPitch !== null) {
+          const center = (this.minPitch + this.maxPitch) / 2;
+          const isExtremeLow = clampedPitch <= this.minPitch + 2;
+          const isExtremeHigh = clampedPitch >= this.maxPitch - 2;
+          // If we are at extremes repeatedly, bias one semitone toward center
+          if (isExtremeLow) clampedPitch = Math.min(this.maxPitch, clampedPitch + 1);
+          if (isExtremeHigh) clampedPitch = Math.max(this.minPitch, clampedPitch - 1);
+          // Gentle pull toward center to avoid long drifts
+          const towardCenter = clampedPitch < center ? 1 : -1;
+          clampedPitch += Math.abs(clampedPitch - center) > 6 ? towardCenter : 0;
+        }
+
         notes.push({
-          pitch: note.pitch,
+          pitch: clampedPitch,
           velocity: velocity,
           duration: duration,
           startTime: currentTime,
         });
 
         currentTime += duration;
+        lastPitch = clampedPitch;
       }
     }
 
@@ -127,20 +166,32 @@ export class MusicMarkovChain extends MarkovChain {
    * Parse a note string into a Note object
    */
   private parseNote(noteStr: string): { pitch: number; octave: number } | null {
-    // Simple note parsing (can be extended for more complex notation)
-    const noteMatch = noteStr.match(/^([A-G]#?)(\d+)$/);
-    if (!noteMatch) return null;
+    // Support sharps and flats (e.g., C4, F#4, Bb3)
+    const match = noteStr.match(/^([A-G](?:#|b)?)(\d+)$/);
+    if (!match) return null;
 
-    const noteName = noteMatch[1];
-    const octave = parseInt(noteMatch[2]);
+    let name = match[1];
+    const octave = parseInt(match[2], 10);
 
-    // Convert note name to MIDI pitch
+    // Normalize flats to enharmonic sharps
+    const flatToSharp: Record<string, string> = {
+      Ab: "G#",
+      Bb: "A#",
+      Cb: "B",
+      Db: "C#",
+      Eb: "D#",
+      Fb: "E",
+      Gb: "F#",
+    };
+    if (name.endsWith("b") && flatToSharp[name]) {
+      name = flatToSharp[name];
+    }
+
     const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const noteIndex = noteNames.indexOf(noteName);
+    const index = noteNames.indexOf(name);
+    if (index === -1) return null;
 
-    if (noteIndex === -1) return null;
-
-    const pitch = noteIndex + octave * 12;
+    const pitch = index + octave * 12;
     return { pitch, octave };
   }
 
@@ -172,21 +223,23 @@ export class MusicMarkovChain extends MarkovChain {
    */
   // TODO: Make this more complex or implement markov chain for velocity
   private calculateVelocity(noteStr: string, rhythmStr: string): number {
-    let velocity = 80; // Base velocity
-
-    // Adjust velocity based on rhythm (longer notes = softer)
+    let velocity = 80;
     switch (rhythmStr) {
       case "whole":
         velocity -= 20;
+        break;
       case "half":
         velocity -= 10;
+        break;
       case "eighth":
         velocity += 10;
+        break;
       case "sixteenth":
         velocity += 15;
+        break;
+      default:
+        break;
     }
-
-    // Ensure velocity stays within MIDI range (1-127)
     return Math.max(1, Math.min(127, velocity));
   }
 
@@ -230,6 +283,58 @@ export class MusicMarkovChain extends MarkovChain {
    */
   setTempo(tempo: number): void {
     this.tempo = tempo;
+  }
+
+  /**
+   * Set temperature on internal chains to control randomness/diversity
+   */
+  setTemperature(temperature: number): void {
+    // Forward to internal chains
+    (this.noteChain as any).setTemperature?.(temperature);
+    (this.chordChain as any).setTemperature?.(temperature);
+    (this.rhythmChain as any).setTemperature?.(temperature);
+  }
+
+  setSamplingConstraints(opts: {
+    repetitionPenalty?: number;
+    repetitionWindow?: number;
+    topK?: number | null;
+    topP?: number | null;
+  }): void {
+    const { repetitionPenalty, repetitionWindow, topK, topP } = opts;
+    if (repetitionPenalty || repetitionWindow) {
+      (this.noteChain as any).setRepetitionPenalty?.(repetitionPenalty ?? 1, repetitionWindow ?? 3);
+    }
+    if (typeof topK !== "undefined") {
+      (this.noteChain as any).setTopK?.(topK ?? null);
+    }
+    if (typeof topP !== "undefined") {
+      (this.noteChain as any).setTopP?.(topP ?? null);
+    }
+  }
+
+  setMaxCorpusSize(maxSize: number | null): void {
+    (this.noteChain as any).setMaxCorpusSize?.(maxSize);
+    (this.chordChain as any).setMaxCorpusSize?.(maxSize);
+    (this.rhythmChain as any).setMaxCorpusSize?.(maxSize);
+  }
+
+  /**
+   * Reset all internal chains and base chain
+   */
+  resetAll(): void {
+    (this.noteChain as any).reset?.();
+    (this.chordChain as any).reset?.();
+    (this.rhythmChain as any).reset?.();
+    super.reset();
+  }
+
+  /**
+   * Configure allowable MIDI pitch range for generated notes
+   */
+  setPitchRange(minPitch: number, maxPitch: number): void {
+    this.minPitch = Math.max(0, Math.min(127, Math.floor(minPitch)));
+    this.maxPitch = Math.max(this.minPitch, Math.min(127, Math.floor(maxPitch)));
   }
 
   /**
