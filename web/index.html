@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markov Chain Demo</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+      }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 24px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .card {
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      input,
+      textarea,
+      button {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #aaa;
+        background: inherit;
+        color: inherit;
+        margin-bottom: 8px;
+      }
+      button.primary {
+        background: #3b82f6;
+        color: #fff;
+        border-color: #2563eb;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.primary:hover {
+        background: #2563eb;
+      }
+      #log {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        white-space: pre-wrap;
+        border-radius: 8px;
+        border: 1px dashed #aaa;
+        padding: 12px;
+        min-height: 100px;
+      }
+      .example {
+        border-left: 4px solid #2196f3;
+        padding: 12px;
+        margin: 16px 0;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎵 Markov Chain Music Generator</h1>
+      <p>Input musical sequences and watch the Markov chain learn and generate new ones!</p>
+
+      <div class="card">
+        <label for="trainingData"
+          >Training Sequences (one sequence per line, notes separated by spaces):</label
+        >
+        <textarea
+          id="trainingData"
+          rows="8"
+          placeholder="C4 D4 E4 F4 G4 A4 B4 C5&#10;G3 A3 B3 C4 D4 E4 F#4 G4&#10;F3 G3 A3 Bb3 C4 D4 E4 F4"
+        ></textarea>
+        <button id="train" class="primary">Train Markov Chain</button>
+      </div>
+
+      <div class="card">
+        <label for="sequenceLength">Sequence Length:</label>
+        <input id="sequenceLength" type="number" min="4" max="20" value="8" />
+        <button id="generate" class="primary">Generate New Sequence</button>
+      </div>
+
+      <div class="card">
+        <label>Generated Sequence:</label>
+        <div id="output" class="output">
+          Click "Train Markov Chain" first, then "Generate New Sequence"
+        </div>
+      </div>
+
+      <div class="card">
+        <label>How it works:</label>
+        <ul>
+          <li>The Markov chain learns the probability of which note follows which other notes</li>
+          <li>It builds a transition matrix from your training data</li>
+          <li>When generating, it uses these probabilities to create new sequences</li>
+          <li>The output will sound similar to your input but with new variations!</li>
+        </ul>
+      </div>
+
+      <script type="module" src="./main.ts"></script>
+    </div>
+  </body>
+</html>
