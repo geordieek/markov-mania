@@ -18,6 +18,8 @@ export interface Note {
   duration: number;
   /** Start time in milliseconds from sequence start */
   startTime: number;
+  /** MIDI channel (0-15) */
+  channel?: number;
 }
 
 export interface RhythmPattern {

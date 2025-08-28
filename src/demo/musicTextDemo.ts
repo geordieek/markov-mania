@@ -45,7 +45,7 @@ function demonstrateMusicGeneration(): void {
 
   console.log("\nGenerating musical sequences:");
   for (let i = 0; i < 2; i++) {
-    const music = musicChain.generateMusic(8); // Generate 8-note sequence
+    const music = musicChain.generateSequence(8); // Generate 8-note sequence
 
     console.log(`\nSequence ${i + 1}:`);
     console.log(`- Key: ${music.key}`);

@@ -45,7 +45,7 @@ describe("MusicMarkovChain", () => {
 
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
-      const music = musicChain.generateMusic(8);
+      const music = musicChain.generateSequence(8);
       expect(music).toBeDefined();
       expect(music.notes).toBeDefined();
       expect(Array.isArray(music.notes)).toBe(true);
@@ -60,7 +60,7 @@ describe("MusicMarkovChain", () => {
 
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
-      const music = musicChain.generateMusic(4);
+      const music = musicChain.generateSequence(4);
 
       // Check basic structure
       expect(music.key).toBe("C");
@@ -86,10 +86,10 @@ describe("MusicMarkovChain", () => {
 
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
-      const shortMusic = musicChain.generateMusic(3);
+      const shortMusic = musicChain.generateSequence(3);
       expect(shortMusic.notes.length).toBeLessThanOrEqual(3);
 
-      const longMusic = musicChain.generateMusic(10);
+      const longMusic = musicChain.generateSequence(10);
       expect(longMusic.notes.length).toBeLessThanOrEqual(10);
     });
   });
@@ -105,7 +105,7 @@ describe("MusicMarkovChain", () => {
 
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
-      const music = musicChain.generateMusic(4);
+      const music = musicChain.generateSequence(4);
       // Note: The key setting is currently simplified, so this test verifies the method works
     });
 
@@ -119,7 +119,7 @@ describe("MusicMarkovChain", () => {
 
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
-      const music = musicChain.generateMusic(2);
+      const music = musicChain.generateSequence(2);
       expect(music.duration).toBeGreaterThan(0);
     });
   });
@@ -150,7 +150,7 @@ describe("MusicMarkovChain", () => {
       expect(() => musicChain.trainWithMusic([], [], [])).not.toThrow();
 
       // With empty training data, generation should fail gracefully
-      expect(() => musicChain.generateMusic(4)).toThrow("No training data available");
+      expect(() => musicChain.generateSequence(4)).toThrow("No training data available");
     });
 
     test("should handle malformed note strings", () => {
@@ -161,7 +161,7 @@ describe("MusicMarkovChain", () => {
       musicChain.trainWithMusic(noteSequences, chordProgressions, rhythmPatterns);
 
       // Should still generate something, skipping invalid notes
-      const music = musicChain.generateMusic(4);
+      const music = musicChain.generateSequence(4);
       expect(music).toBeDefined();
     });
   });

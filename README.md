@@ -16,10 +16,11 @@ TypeScript Markov Chain → MIDI Generation → Max for Live Device → Ableton 
 
 - **`MarkovChain`**: Base probabilistic finite state machine
 - **`MusicMarkovChain`**: Music-specific markov chain
+- **`MIDIGenerator`**: Converts Markov output to MIDI format
 
 ## Getting Started
 
-## 📚 How It Works
+## How It Works
 
 ### 1. **Training Phase**
 
@@ -42,7 +43,7 @@ The trained chain generates new musical sequences:
 
 ```typescript
 // Generate a complete musical sequence
-const music = musicChain.generateMusic(16); // 16-note sequence
+const music = musicChain.generateSequence(16); // 16-note sequence
 
 // Access the generated music
 console.log(`Key: ${music.key}`);
@@ -90,9 +91,17 @@ const config: MarkovConfig = {
 #### `MusicMarkovChain`
 
 - `trainWithMusic(notes, chords, rhythms): void` - Train with musical data
-- `generateMusic(length: number): MusicSequence` - Generate music
+- `generateSequence(length: number): MusicSequence` - Generate musical sequence
 - `setKey(key: string): void` - Set musical key
 - `setTempo(tempo: number): void` - Set tempo
+
+#### `MIDIGenerator`
+
+- `generateMIDI(musicSequence: MusicSequence, personality: string = "melodic"): MIDISequence` - Generate MIDI sequence
+- `generateMIDIFile(midiSequence: MIDISequence): Uint8Array` - Generate MIDI file
+- `setTempo(tempo: number): void` - Set tempo
+- `setTimeSignature(timeSignature: string): void` - Set time signature
+- `setKeySignature(keySignature: string): void` - Set key signature
 
 ## 🤝 Acknowledgments
 

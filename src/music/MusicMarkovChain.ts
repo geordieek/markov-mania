@@ -65,7 +65,7 @@ export class MusicMarkovChain extends MarkovChain {
   /**
    * Generate a complete musical sequence from the trained chains
    */
-  generateMusic(sequenceLength: number = 16): MusicSequence {
+  generateSequence(sequenceLength: number = 16): MusicSequence {
     // Generate different musical layers
     const melody = this.generateMelody(sequenceLength);
     const harmony = this.generateHarmony(sequenceLength);
