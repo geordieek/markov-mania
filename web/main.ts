@@ -115,6 +115,48 @@ stopBtn.addEventListener("click", () => {
   stopBtn.disabled = true;
 });
 
+// Play training sequence
+const playTrainingBtn = document.getElementById("playTraining") as HTMLButtonElement;
+playTrainingBtn.addEventListener("click", async () => {
+  let trainingText = trainingDataEl.value.trim();
+
+  // If no input, use the placeholder text as fallback
+  if (!trainingText) {
+    trainingText = trainingDataEl.placeholder;
+  }
+
+  if (!trainingText) {
+    outputEl.textContent = "No training sequences available.";
+    return;
+  }
+
+  try {
+    // Ensure audio context is initialized
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    const sequences = trainingText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => line.split(/\s+/));
+
+    // Play the first sequence as an example
+    const firstSequence = sequences[0];
+    if (firstSequence.length > 0) {
+      playSequence(firstSequence);
+      outputEl.textContent = `Playing training sequence: ${firstSequence.join(" ")}`;
+    }
+  } catch (error) {
+    outputEl.textContent = `Error playing training sequence: ${error}`;
+  }
+});
+
 // Play a sequence of notes
 function playSequence(notes: string[]) {
   if (!audioContext) return;
