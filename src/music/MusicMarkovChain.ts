@@ -98,18 +98,7 @@ export class MusicMarkovChain extends MarkovChain {
         const velocity = this.calculateVelocity(noteStr, rhythmStr);
 
         // Constrain pitch to range to avoid register drift and apply small mean-reversion bias
-        let clampedPitch = Math.max(this.minPitch, Math.min(this.maxPitch, note.pitch));
-        if (lastPitch !== null) {
-          const center = (this.minPitch + this.maxPitch) / 2;
-          const isExtremeLow = clampedPitch <= this.minPitch + 2;
-          const isExtremeHigh = clampedPitch >= this.maxPitch - 2;
-          // If we are at extremes repeatedly, bias one semitone toward center
-          if (isExtremeLow) clampedPitch = Math.min(this.maxPitch, clampedPitch + 1);
-          if (isExtremeHigh) clampedPitch = Math.max(this.minPitch, clampedPitch - 1);
-          // Gentle pull toward center to avoid long drifts
-          const towardCenter = clampedPitch < center ? 1 : -1;
-          clampedPitch += Math.abs(clampedPitch - center) > 6 ? towardCenter : 0;
-        }
+        const clampedPitch = this.constrainPitch(note.pitch, lastPitch);
 
         notes.push({
           pitch: clampedPitch,
@@ -219,6 +208,30 @@ export class MusicMarkovChain extends MarkovChain {
         break;
     }
     return Math.max(1, Math.min(127, velocity));
+  }
+
+  /**
+   * Constrains pitch to valid range and applies mean-reversion bias to prevent register drift
+   */
+  private constrainPitch(pitch: number, lastPitch: number | null): number {
+    // Constrain pitch to range to avoid register drift and apply small mean-reversion bias
+    let clampedPitch = Math.max(this.minPitch, Math.min(this.maxPitch, pitch));
+
+    if (lastPitch !== null) {
+      const center = (this.minPitch + this.maxPitch) / 2;
+      const isExtremeLow = clampedPitch <= this.minPitch + 2;
+      const isExtremeHigh = clampedPitch >= this.maxPitch - 2;
+
+      // If we are at extremes repeatedly, bias one semitone toward center
+      if (isExtremeLow) clampedPitch = Math.min(this.maxPitch, clampedPitch + 1);
+      if (isExtremeHigh) clampedPitch = Math.max(this.minPitch, clampedPitch - 1);
+
+      // Gentle pull toward center to avoid long drifts
+      const towardCenter = clampedPitch < center ? 1 : -1;
+      clampedPitch += Math.abs(clampedPitch - center) > 6 ? towardCenter : 0;
+    }
+
+    return clampedPitch;
   }
 
   /**
