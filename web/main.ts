@@ -146,16 +146,63 @@ playTrainingBtn.addEventListener("click", async () => {
       .filter((line) => line.length > 0)
       .map((line) => line.split(/\s+/));
 
-    // Play the first sequence as an example
-    const firstSequence = sequences[0];
-    if (firstSequence.length > 0) {
-      playSequence(firstSequence);
-      outputEl.textContent = `Playing training sequence: ${firstSequence.join(" ")}`;
+    if (sequences.length === 0) {
+      outputEl.textContent = "No valid sequences found.";
+      return;
     }
+
+    // Play all sequences one by one
+    playAllTrainingSequences(sequences);
   } catch (error) {
     outputEl.textContent = `Error playing training sequence: ${error}`;
   }
 });
+
+// Play all training sequences with visual feedback
+async function playAllTrainingSequences(sequences: string[][]) {
+  const initialOutputTextContent = outputEl.textContent;
+  const tempo = 120; // BPM
+  const beatDuration = 60 / tempo; // seconds per beat
+  const sequenceDelay = 1000; // 1 second between sequences
+
+  for (let i = 0; i < sequences.length; i++) {
+    const sequence = sequences[i];
+
+    // Show which sequence is currently playing
+    outputEl.textContent = `Playing sequence ${i + 1}/${sequences.length}: ${sequence.join(" ")}`;
+
+    // Play the current sequence
+    await playSequenceWithDelay(sequence, beatDuration);
+
+    // Wait before playing the next sequence (unless it's the last one)
+    if (i < sequences.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, sequenceDelay));
+    }
+  }
+
+  // Restore output text content
+  outputEl.textContent = initialOutputTextContent;
+}
+
+// Play a sequence with a delay between notes
+async function playSequenceWithDelay(notes: string[], beatDuration: number): Promise<void> {
+  return new Promise((resolve) => {
+    let notesPlayed = 0;
+
+    notes.forEach((note, index) => {
+      const startTime = audioContext!.currentTime + index * beatDuration;
+      const duration = beatDuration * 0.8; // 80% of beat duration
+
+      playNote(note, startTime, duration);
+      notesPlayed++;
+
+      // Resolve when all notes have been scheduled
+      if (notesPlayed === notes.length) {
+        setTimeout(resolve, notes.length * beatDuration * 1000);
+      }
+    });
+  });
+}
 
 // Play a sequence of notes
 function playSequence(notes: string[]) {
