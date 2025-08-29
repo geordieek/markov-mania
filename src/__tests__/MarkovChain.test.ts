@@ -30,7 +30,7 @@ describe("MarkovChain", () => {
       ];
       chain.train(sequences);
 
-      const generated = chain.generate();
+      const generated = chain.generate(5);
       expect(Array.isArray(generated)).toBe(true);
       expect(generated.length).toBeGreaterThan(0);
     });
@@ -49,7 +49,7 @@ describe("MarkovChain", () => {
       // Generate multiple sequences to see if patterns are learned
       const results: string[][] = [];
       for (let i = 0; i < 5; i++) {
-        results.push(chain.generate());
+        results.push(chain.generate(4));
       }
 
       // Should generate different sequences (not just repeat training data)
@@ -61,7 +61,7 @@ describe("MarkovChain", () => {
       expect(() => chain.train([])).not.toThrow();
 
       // Should throw error when trying to generate without training data
-      expect(() => chain.generate()).toThrow("No training data available");
+      expect(() => chain.generate(5)).toThrow("No training data available");
     });
   });
 
@@ -70,8 +70,8 @@ describe("MarkovChain", () => {
       const sequences = [["a", "b", "c", "d", "e"]];
       chain.train(sequences);
 
-      const generated = chain.generate();
-      expect(generated.length).toBeLessThanOrEqual(config.maxLength);
+      const generated = chain.generate(5);
+      expect(generated.length).toBeLessThanOrEqual(config.maxLength || 64);
     });
 
     test("should generate different sequences on multiple calls", () => {
@@ -82,8 +82,8 @@ describe("MarkovChain", () => {
       ];
       chain.train(sequences);
 
-      const first = chain.generate();
-      const second = chain.generate();
+      const first = chain.generate(4);
+      const second = chain.generate(4);
 
       // With randomness, we should get different results (though not guaranteed)
       // This test might occasionally fail due to randomness, but that's expected
@@ -120,7 +120,7 @@ describe("MarkovChain", () => {
       chain.reset();
 
       // After reset, should throw error when trying to generate
-      expect(() => chain.generate()).toThrow("No training data available");
+      expect(() => chain.generate(5)).toThrow("No training data available");
     });
   });
 });

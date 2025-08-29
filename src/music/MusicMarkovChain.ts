@@ -1,7 +1,6 @@
 /**
  * This class extends the base MarkovChain to work specifically with musical elements:
  * - Note sequences (melodies)
- * - Chord progressions (harmony)
  * - Rhythm patterns (groove)
  */
 
@@ -10,7 +9,6 @@ import { MarkovConfig, MusicSequence, Note } from "../types";
 
 export class MusicMarkovChain extends MarkovChain {
   private noteChain: MarkovChain;
-  private chordChain: MarkovChain;
   private rhythmChain: MarkovChain;
 
   // Musical constraints and scales
@@ -25,33 +23,22 @@ export class MusicMarkovChain extends MarkovChain {
 
     // Create specialized chains for different musical aspects
     this.noteChain = new MarkovChain(config);
-    this.chordChain = new MarkovChain(config);
     this.rhythmChain = new MarkovChain(config);
   }
 
   /**
    * Train the Markov chain with musical data
    */
-  trainWithMusic(
-    noteSequences: string[][],
-    chordProgressions: string[][],
-    rhythmPatterns: string[][]
-  ): void {
+  trainWithMusic(noteSequences: string[][], rhythmPatterns: string[][]): void {
     this.noteChain.train(noteSequences);
-    this.chordChain.train(chordProgressions);
     this.rhythmChain.train(rhythmPatterns);
   }
 
   /**
    * Append new musical data to existing training, preserving previous corpus
    */
-  trainWithMusicAppend(
-    noteSequences: string[][],
-    chordProgressions: string[][],
-    rhythmPatterns: string[][]
-  ): void {
+  trainWithMusicAppend(noteSequences: string[][], rhythmPatterns: string[][]): void {
     (this.noteChain as any).trainAppend?.(noteSequences);
-    (this.chordChain as any).trainAppend?.(chordProgressions);
     (this.rhythmChain as any).trainAppend?.(rhythmPatterns);
   }
 
@@ -70,15 +57,12 @@ export class MusicMarkovChain extends MarkovChain {
 
     // Generate different musical layers
     const melody = this.generateMelody(sequenceLength);
-    const harmony = this.generateHarmony(sequenceLength);
     const rhythm = this.generateRhythm(sequenceLength);
 
-    console.log(
-      `Generated melody length: ${melody.length}, harmony: ${harmony.length}, rhythm: ${rhythm.length}`
-    );
+    console.log(`Generated melody length: ${melody.length}, rhythm: ${rhythm.length}`);
 
     // Combine them into a coherent musical sequence
-    return this.combineMusicalLayers(melody, harmony, rhythm);
+    return this.combineMusicalLayers(melody, rhythm);
   }
 
   /**
@@ -93,14 +77,6 @@ export class MusicMarkovChain extends MarkovChain {
   }
 
   /**
-   * Generate a harmonic progression using the chord Markov chain
-   */
-  private generateHarmony(length: number): string[] {
-    // Generate a sequence with the exact length requested
-    return this.chordChain.generate(length);
-  }
-
-  /**
    * Generate a rhythm pattern using the rhythm Markov chain
    */
   private generateRhythm(length: number): string[] {
@@ -111,11 +87,7 @@ export class MusicMarkovChain extends MarkovChain {
   /**
    * Combine different musical layers into a coherent sequence
    */
-  private combineMusicalLayers(
-    melody: string[],
-    harmony: string[],
-    rhythm: string[]
-  ): MusicSequence {
+  private combineMusicalLayers(melody: string[], rhythm: string[]): MusicSequence {
     const notes: Note[] = [];
     let currentTime = 0;
     // Track last MIDI pitch to discourage large unidirectional drifts
@@ -124,7 +96,6 @@ export class MusicMarkovChain extends MarkovChain {
     // Convert string representations to actual musical elements
     for (let i = 0; i < melody.length; i++) {
       const noteStr = melody[i];
-      const chordStr = harmony[i] || harmony[0]; // Fallback to first chord
       const rhythmStr = rhythm[i] || rhythm[0]; // Fallback to first rhythm
 
       // Parse note string (e.g., "C4", "F#5")
@@ -297,7 +268,6 @@ export class MusicMarkovChain extends MarkovChain {
   setTemperature(temperature: number): void {
     // Forward to internal chains
     (this.noteChain as any).setTemperature?.(temperature);
-    (this.chordChain as any).setTemperature?.(temperature);
     (this.rhythmChain as any).setTemperature?.(temperature);
   }
 
@@ -321,7 +291,6 @@ export class MusicMarkovChain extends MarkovChain {
 
   setMaxCorpusSize(maxSize: number | null): void {
     (this.noteChain as any).setMaxCorpusSize?.(maxSize);
-    (this.chordChain as any).setMaxCorpusSize?.(maxSize);
     (this.rhythmChain as any).setMaxCorpusSize?.(maxSize);
   }
 
@@ -330,7 +299,6 @@ export class MusicMarkovChain extends MarkovChain {
    */
   resetAll(): void {
     (this.noteChain as any).reset?.();
-    (this.chordChain as any).reset?.();
     (this.rhythmChain as any).reset?.();
     super.reset();
   }
@@ -348,12 +316,10 @@ export class MusicMarkovChain extends MarkovChain {
    */
   getMusicStats(): {
     noteStats: any;
-    chordStats: any;
     rhythmStats: any;
   } {
     return {
       noteStats: this.noteChain.getStats(),
-      chordStats: this.chordChain.getStats(),
       rhythmStats: this.rhythmChain.getStats(),
     };
   }

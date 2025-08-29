@@ -1,6 +1,6 @@
 // Markov Chain State Types
 export interface MarkovState {
-  /** The current state identifier (e.g., current note, chord, or rhythm pattern) */
+  /** The current state identifier (e.g., current note or rhythm pattern) */
   id: string;
   /** Probability distribution of next states */
   transitions: Map<string, number>;
@@ -29,15 +29,6 @@ export interface RhythmPattern {
   beats: number[];
   /** Pattern length in beats */
   length: number;
-}
-
-export interface Chord {
-  /** Chord identifier */
-  id: string;
-  /** Array of MIDI note numbers */
-  notes: number[];
-  /** Chord type (major, minor, diminished, etc.) */
-  type: string;
 }
 
 // Markov Chain Configuration

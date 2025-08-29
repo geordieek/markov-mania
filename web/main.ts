@@ -62,7 +62,6 @@ temperatureEl.addEventListener("input", () => {
   // Apply temperature to existing chain if trained
   if (isTrained) {
     (musicChain as any).noteChain.setTemperature?.(newTemperature);
-    (musicChain as any).chordChain.setTemperature?.(newTemperature);
     (musicChain as any).rhythmChain.setTemperature?.(newTemperature);
     console.log("Applied temperature:", newTemperature, "to existing chain");
   }
@@ -88,6 +87,8 @@ let currentSequence: string[] = [];
 let audioContext: AudioContext | null = null;
 let oscillator: OscillatorNode | null = null;
 let gainNode: GainNode | null = null;
+let isPlayingTraining = false;
+let trainingCancelled = false;
 
 // Train the Markov chain
 trainBtn.addEventListener("click", () => {
@@ -123,10 +124,9 @@ trainBtn.addEventListener("click", () => {
 
     // Apply temperature and smoothing to the new chain
     (musicChain as any).noteChain.setTemperature?.(config.temperature || 1.0);
-    (musicChain as any).chordChain.setTemperature?.(config.temperature || 1.0);
     (musicChain as any).rhythmChain.setTemperature?.(config.temperature || 1.0);
 
-    musicChain.trainWithMusic(sequences, sequences, sequences);
+    musicChain.trainWithMusic(sequences, sequences);
 
     isTrained = true;
     updateUI();
@@ -195,6 +195,7 @@ playBtn.addEventListener("click", async () => {
 
 // Stop playing
 stopBtn.addEventListener("click", () => {
+  // Stop generated sequence playback
   if (oscillator) {
     oscillator.stop();
     oscillator = null;
@@ -202,6 +203,13 @@ stopBtn.addEventListener("click", () => {
   if (gainNode) {
     gainNode.gain.setValueAtTime(0, audioContext?.currentTime || 0);
   }
+
+  // Stop training sequence playback
+  if (isPlayingTraining) {
+    trainingCancelled = true;
+    isPlayingTraining = false;
+  }
+
   playBtn.disabled = false;
   stopBtn.disabled = true;
 });
@@ -244,6 +252,7 @@ playTrainingBtn.addEventListener("click", async () => {
 
     // Play all sequences one by one
     playAllTrainingSequences(sequences);
+    // Note: stop button is now managed within playAllTrainingSequences
   } catch (error) {
     outputEl.textContent = `Error playing training sequence: ${error}`;
   }
@@ -256,7 +265,15 @@ async function playAllTrainingSequences(sequences: string[][]) {
   const beatDuration = 60 / tempo; // seconds per beat
   const sequenceDelay = 1000; // 1 second between sequences
 
+  isPlayingTraining = true;
+  trainingCancelled = false;
+
   for (let i = 0; i < sequences.length; i++) {
+    // Check if playback was cancelled
+    if (trainingCancelled) {
+      break;
+    }
+
     const sequence = sequences[i];
 
     // Show which sequence is currently playing
@@ -265,22 +282,52 @@ async function playAllTrainingSequences(sequences: string[][]) {
     // Play the current sequence
     await playSequenceWithDelay(sequence, beatDuration);
 
+    // Check if playback was cancelled before waiting
+    if (trainingCancelled) {
+      break;
+    }
+
     // Wait before playing the next sequence (unless it's the last one)
     if (i < sequences.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, sequenceDelay));
+      await new Promise<void>((resolve) => {
+        const timeoutId = setTimeout(resolve, sequenceDelay);
+        // Check for cancellation during the delay
+        const checkCancellation = () => {
+          if (trainingCancelled) {
+            clearTimeout(timeoutId);
+            resolve();
+          } else {
+            setTimeout(checkCancellation, 100); // Check every 100ms
+          }
+        };
+        checkCancellation();
+      });
     }
   }
 
   // Restore output text content
   outputEl.textContent = initialOutputTextContent;
+
+  // Reset state
+  isPlayingTraining = false;
+  trainingCancelled = false;
+
+  // Disable stop button
+  stopBtn.disabled = true;
 }
 
 // Play a sequence with a delay between notes
 async function playSequenceWithDelay(notes: string[], beatDuration: number): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     let notesPlayed = 0;
 
     notes.forEach((note, index) => {
+      // Check if playback was cancelled before scheduling each note
+      if (trainingCancelled) {
+        resolve();
+        return;
+      }
+
       const startTime = audioContext!.currentTime + index * beatDuration;
       const duration = beatDuration * 0.8; // 80% of beat duration
 
@@ -289,7 +336,11 @@ async function playSequenceWithDelay(notes: string[], beatDuration: number): Pro
 
       // Resolve when all notes have been scheduled
       if (notesPlayed === notes.length) {
-        setTimeout(resolve, notes.length * beatDuration * 1000);
+        setTimeout(() => {
+          if (!trainingCancelled) {
+            resolve();
+          }
+        }, notes.length * beatDuration * 1000);
       }
     });
   });
@@ -528,7 +579,6 @@ function updateAnalysis() {
     // Display statistics
     statsEl.innerHTML = `
       <strong>Note States:</strong> ${musicStats.noteStats.totalStates}<br>
-      <strong>Chord States:</strong> ${musicStats.chordStats.totalStates}<br>
       <strong>Rhythm States:</strong> ${musicStats.rhythmStats.totalStates}<br>
       <strong>Avg Transitions:</strong> ${musicStats.noteStats.averageTransitionsPerState.toFixed(
         2

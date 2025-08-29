@@ -19,7 +19,7 @@ function demonstrateTextGeneration(): void {
     "music theory helps understand harmony",
     "the melody flows like a river",
     "rhythm and beat drive the song",
-    "harmony creates beautiful chords",
+    "harmony creates beautiful music",
     "the song tells a story through sound",
     "music connects people across cultures",
     "the piano keys make sweet sounds",

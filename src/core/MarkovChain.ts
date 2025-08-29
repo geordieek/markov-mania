@@ -20,7 +20,7 @@ export class MarkovChain {
    * Train the Markov chain with musical sequences
    * This builds the state transition probability matrix
    *
-   * @param sequences Array of musical sequences (e.g., note sequences, chord progressions)
+   * @param sequences Array of musical sequences (e.g., note sequences, rhythm patterns)
    */
   train(sequences: string[][]): void {
     this.trainingData = sequences;
