@@ -32,7 +32,6 @@ const musicChain = new MusicMarkovChain(config);
 // Train with musical sequences
 musicChain.trainWithMusic(
   noteSequences, // Melodic patterns
-  chordProgressions, // Harmonic progressions
   rhythmPatterns // Rhythmic patterns
 );
 ```
@@ -90,7 +89,7 @@ const config: MarkovConfig = {
 
 #### `MusicMarkovChain`
 
-- `trainWithMusic(notes, chords, rhythms): void` - Train with musical data
+- `trainWithMusic(notes, rhythms): void` - Train with musical data
 - `generateSequence(length: number): MusicSequence` - Generate musical sequence
 - `setKey(key: string): void` - Set musical key
 - `setTempo(tempo: number): void` - Set tempo

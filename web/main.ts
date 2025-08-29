@@ -1,5 +1,6 @@
 import { MusicMarkovChain } from "@src/music/MusicMarkovChain";
 import type { MarkovConfig } from "@src/types";
+import { AudioManager } from "./audioManager";
 
 // DOM elements
 const trainingDataEl = document.getElementById("trainingData") as HTMLTextAreaElement;
@@ -84,11 +85,10 @@ orderEl.addEventListener("change", () => {
 // State
 let isTrained = false;
 let currentSequence: string[] = [];
-let audioContext: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-let gainNode: GainNode | null = null;
-let isPlayingTraining = false;
-let trainingCancelled = false;
+let audioManager: AudioManager;
+
+// Initialize audio manager
+audioManager = new AudioManager();
 
 // Train the Markov chain
 trainBtn.addEventListener("click", () => {
@@ -177,17 +177,8 @@ playBtn.addEventListener("click", async () => {
   if (!currentSequence.length) return;
 
   try {
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
-    playSequence(currentSequence);
-    playBtn.disabled = true;
-    stopBtn.disabled = false;
+    await audioManager.playSequence(currentSequence);
+    updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing: ${error}`;
   }
@@ -195,23 +186,9 @@ playBtn.addEventListener("click", async () => {
 
 // Stop playing
 stopBtn.addEventListener("click", () => {
-  // Stop generated sequence playback
-  if (oscillator) {
-    oscillator.stop();
-    oscillator = null;
-  }
-  if (gainNode) {
-    gainNode.gain.setValueAtTime(0, audioContext?.currentTime || 0);
-  }
-
-  // Stop training sequence playback
-  if (isPlayingTraining) {
-    trainingCancelled = true;
-    isPlayingTraining = false;
-  }
-
-  playBtn.disabled = false;
-  stopBtn.disabled = true;
+  // Stop all audio playback
+  audioManager.stop();
+  updateUI();
 });
 
 // Play training sequence
@@ -230,15 +207,6 @@ playTrainingBtn.addEventListener("click", async () => {
   }
 
   try {
-    // Ensure audio context is initialized
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
     const sequences = trainingText
       .split("\n")
       .map((line) => line.trim())
@@ -250,153 +218,13 @@ playTrainingBtn.addEventListener("click", async () => {
       return;
     }
 
-    // Play all sequences one by one
-    playAllTrainingSequences(sequences);
-    // Note: stop button is now managed within playAllTrainingSequences
+    // Play all sequences using AudioManager
+    await audioManager.playTrainingSequences(sequences);
+    updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing training sequence: ${error}`;
   }
 });
-
-// Play all training sequences with visual feedback
-async function playAllTrainingSequences(sequences: string[][]) {
-  const initialOutputTextContent = outputEl.textContent;
-  const tempo = 120; // BPM
-  const beatDuration = 60 / tempo; // seconds per beat
-  const sequenceDelay = 1000; // 1 second between sequences
-
-  isPlayingTraining = true;
-  trainingCancelled = false;
-
-  for (let i = 0; i < sequences.length; i++) {
-    // Check if playback was cancelled
-    if (trainingCancelled) {
-      break;
-    }
-
-    const sequence = sequences[i];
-
-    // Show which sequence is currently playing
-    outputEl.textContent = `Playing sequence ${i + 1}/${sequences.length}: ${sequence.join(" ")}`;
-
-    // Play the current sequence
-    await playSequenceWithDelay(sequence, beatDuration);
-
-    // Check if playback was cancelled before waiting
-    if (trainingCancelled) {
-      break;
-    }
-
-    // Wait before playing the next sequence (unless it's the last one)
-    if (i < sequences.length - 1) {
-      await new Promise<void>((resolve) => {
-        const timeoutId = setTimeout(resolve, sequenceDelay);
-        // Check for cancellation during the delay
-        const checkCancellation = () => {
-          if (trainingCancelled) {
-            clearTimeout(timeoutId);
-            resolve();
-          } else {
-            setTimeout(checkCancellation, 100); // Check every 100ms
-          }
-        };
-        checkCancellation();
-      });
-    }
-  }
-
-  // Restore output text content
-  outputEl.textContent = initialOutputTextContent;
-
-  // Reset state
-  isPlayingTraining = false;
-  trainingCancelled = false;
-
-  // Disable stop button
-  stopBtn.disabled = true;
-}
-
-// Play a sequence with a delay between notes
-async function playSequenceWithDelay(notes: string[], beatDuration: number): Promise<void> {
-  return new Promise<void>((resolve) => {
-    let notesPlayed = 0;
-
-    notes.forEach((note, index) => {
-      // Check if playback was cancelled before scheduling each note
-      if (trainingCancelled) {
-        resolve();
-        return;
-      }
-
-      const startTime = audioContext!.currentTime + index * beatDuration;
-      const duration = beatDuration * 0.8; // 80% of beat duration
-
-      playNote(note, startTime, duration);
-      notesPlayed++;
-
-      // Resolve when all notes have been scheduled
-      if (notesPlayed === notes.length) {
-        setTimeout(() => {
-          if (!trainingCancelled) {
-            resolve();
-          }
-        }, notes.length * beatDuration * 1000);
-      }
-    });
-  });
-}
-
-// Play a sequence of notes
-function playSequence(notes: string[]) {
-  if (!audioContext) return;
-
-  const tempo = 120; // BPM
-  const beatDuration = 60 / tempo; // seconds per beat
-
-  notes.forEach((note, index) => {
-    const startTime = audioContext!.currentTime + index * beatDuration;
-    const duration = beatDuration * 0.8; // 80% of beat duration
-
-    playNote(note, startTime, duration);
-  });
-}
-
-// Play a single note
-function playNote(noteName: string, startTime: number, duration: number) {
-  if (!audioContext) return;
-
-  const frequency = getNoteFrequency(noteName);
-
-  oscillator = audioContext.createOscillator();
-  gainNode = audioContext.createGain();
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.frequency.setValueAtTime(frequency, startTime);
-  oscillator.type = "sine";
-
-  gainNode.gain.setValueAtTime(0, startTime);
-  gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
-  oscillator.start(startTime);
-  oscillator.stop(startTime + duration);
-}
-
-// Get frequency for a note name
-function getNoteFrequency(noteName: string): number {
-  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const note = noteName.replace(/\d/g, "");
-  const octave = parseInt(noteName.replace(/\D/g, "")) || 4;
-
-  const noteIndex = noteNames.indexOf(note);
-  if (noteIndex === -1) return 440;
-
-  // A4 = 440Hz, calculate relative frequency
-  const semitonesFromA4 = noteIndex - 9 + (octave - 4) * 12;
-  return 440 * Math.pow(2, semitonesFromA4 / 12);
-}
 
 // Get note name from pitch
 function getNoteName(pitch: number): string {
@@ -410,7 +238,7 @@ function getNoteName(pitch: number): string {
 function updateUI() {
   generateBtn.disabled = !isTrained;
   playBtn.disabled = !isTrained || !currentSequence.length;
-  stopBtn.disabled = true;
+  stopBtn.disabled = !audioManager.isCurrentlyPlaying();
 }
 
 // Update transitions display
