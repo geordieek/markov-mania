@@ -4,7 +4,7 @@
  * concrete MIDI data that can be played or saved to files.
  */
 
-import { MusicSequence, Note, MusicalPersonality } from "../types";
+import { MusicSequence, Note } from "../types";
 
 // MIDI-specific extensions of base types
 export interface MIDINote extends Note {
@@ -34,79 +34,20 @@ export class MIDIGenerator {
   private tempo: number = 120; // BPM
   private timeSignature: string = "4/4";
   private keySignature: string = "C";
-  private personalities: Map<string, MusicalPersonality> = new Map();
 
   constructor() {
-    this.initializePersonalities();
-  }
-
-  /**
-   * Initialize predefined musical personalities
-   */
-  private initializePersonalities(): void {
-    // Melodic personality - focused on melody with simple harmony
-    this.personalities.set("melodic", {
-      name: "Melodic",
-      velocityRange: [60, 100],
-      noteLengths: ["eighth", "quarter", "half"],
-      articulation: "normal",
-      rhythmComplexity: "simple",
-      harmonicDensity: "sparse",
-    });
-
-    // Rhythmic personality - strong rhythmic focus
-    this.personalities.set("rhythmic", {
-      name: "Rhythmic",
-      velocityRange: [80, 127],
-      noteLengths: ["sixteenth", "eighth", "quarter"],
-      articulation: "staccato",
-      rhythmComplexity: "complex",
-      harmonicDensity: "medium",
-    });
-
-    // Harmonic personality - rich chord progressions
-    this.personalities.set("harmonic", {
-      name: "Harmonic",
-      velocityRange: [40, 80],
-      noteLengths: ["half", "whole", "quarter"],
-      articulation: "legato",
-      rhythmComplexity: "simple",
-      harmonicDensity: "dense",
-    });
-
-    // Jazz personality - complex rhythms and harmonies
-    this.personalities.set("jazz", {
-      name: "Jazz",
-      velocityRange: [70, 110],
-      noteLengths: ["sixteenth", "eighth", "quarter", "half"],
-      articulation: "normal",
-      rhythmComplexity: "complex",
-      harmonicDensity: "dense",
-    });
-
-    // Ambient personality - long, flowing notes
-    this.personalities.set("ambient", {
-      name: "Ambient",
-      velocityRange: [30, 70],
-      noteLengths: ["half", "whole", "dotted-half"],
-      articulation: "legato",
-      rhythmComplexity: "simple",
-      harmonicDensity: "sparse",
-    });
+    // Simplified constructor without personalities
   }
 
   /**
    * Convert a MusicSequence to MIDI format
    */
-  generateMIDI(musicSequence: MusicSequence, personality: string = "melodic"): MIDISequence {
-    const personalityConfig =
-      this.personalities.get(personality) || this.personalities.get("melodic")!;
-
+  generateMIDI(musicSequence: MusicSequence): MIDISequence {
     // Convert notes to MIDI format
     const midiNotes: MIDINote[] = musicSequence.notes.map((note) => {
       const midiNote: MIDINote = {
         pitch: note.pitch,
-        velocity: this.applyPersonalityVelocity(note.velocity, personalityConfig),
+        velocity: note.velocity,
         startTime: this.convertTimeToTicks(note.startTime),
         duration: this.convertTimeToTicks(note.duration),
         channel: 0, // Default to channel 0
@@ -114,11 +55,8 @@ export class MIDIGenerator {
       return midiNote;
     });
 
-    // Apply personality-specific modifications
-    const modifiedNotes = this.applyPersonalityModifications(midiNotes, personalityConfig);
-
     return {
-      notes: modifiedNotes,
+      notes: midiNotes,
       duration: this.convertTimeToTicks(musicSequence.duration),
       tempo: this.tempo,
       timeSignature: this.timeSignature,
@@ -126,68 +64,9 @@ export class MIDIGenerator {
     };
   }
 
-  /**
-   * Apply personality-specific velocity modifications
-   */
-  private applyPersonalityVelocity(baseVelocity: number, personality: MusicalPersonality): number {
-    const [minVel, maxVel] = personality.velocityRange;
+  // Personality-related methods removed for simplicity
 
-    // Scale velocity to personality range
-    let scaledVelocity = (baseVelocity / 127) * (maxVel - minVel) + minVel;
-
-    // Add some randomness for natural variation
-    const variation = (Math.random() - 0.5) * 10;
-    scaledVelocity += variation;
-
-    return Math.max(1, Math.min(127, Math.round(scaledVelocity)));
-  }
-
-  /**
-   * Apply personality-specific modifications to notes
-   */
-  private applyPersonalityModifications(
-    notes: MIDINote[],
-    personality: MusicalPersonality
-  ): MIDINote[] {
-    let modifiedNotes = [...notes];
-
-    // Apply articulation
-    if (personality.articulation === "staccato") {
-      modifiedNotes = modifiedNotes.map((note) => ({
-        ...note,
-        duration: Math.min(note.duration, this.ticksPerBeat / 4), // Short notes
-      }));
-    } else if (personality.articulation === "legato") {
-      modifiedNotes = modifiedNotes.map((note) => ({
-        ...note,
-        duration: Math.max(note.duration, this.ticksPerBeat), // Longer notes
-      }));
-    }
-
-    // Apply rhythm complexity
-    if (personality.rhythmComplexity === "complex") {
-      modifiedNotes = this.addRhythmicVariation(modifiedNotes);
-    }
-
-    return modifiedNotes;
-  }
-
-  /**
-   * Add rhythmic variation for complex personalities
-   */
-  private addRhythmicVariation(notes: MIDINote[]): MIDINote[] {
-    return notes.map((note, index) => {
-      // Add slight timing variations
-      const timingVariation = (Math.random() - 0.5) * (this.ticksPerBeat / 8);
-      const durationVariation = (Math.random() - 0.5) * (this.ticksPerBeat / 16);
-
-      return {
-        ...note,
-        startTime: Math.max(0, note.startTime + timingVariation),
-        duration: Math.max(this.ticksPerBeat / 16, note.duration + durationVariation),
-      };
-    });
-  }
+  // All personality-related methods removed for simplicity
 
   /**
    * Convert time in milliseconds to MIDI ticks
@@ -320,26 +199,5 @@ export class MIDIGenerator {
    */
   setKeySignature(keySignature: string): void {
     this.keySignature = keySignature;
-  }
-
-  /**
-   * Get available musical personalities
-   */
-  getPersonalities(): string[] {
-    return Array.from(this.personalities.keys());
-  }
-
-  /**
-   * Get personality configuration
-   */
-  getPersonality(name: string): MusicalPersonality | undefined {
-    return this.personalities.get(name);
-  }
-
-  /**
-   * Add a custom musical personality
-   */
-  addPersonality(name: string, personality: MusicalPersonality): void {
-    this.personalities.set(name, personality);
   }
 }

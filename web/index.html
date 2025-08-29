@@ -139,17 +139,47 @@
         <textarea
           id="trainingData"
           rows="8"
-          placeholder="C4 D4 E4 F4 G4 A4 B4 C5&#10;G3 A3 B3 C4 D4 E4 F#4 G4&#10;F3 G3 A3 Bb3 C4 D4 E4 F4"
+          placeholder="C4 D4 E4 F4 G4 A4 B4 C5&#10;G3 A3 B3 C4 D4 E4 F#4 G4&#10;F3 G3 A3 Bb3 C4 D4 E4 F4&#10;C4 E4 G4 C5 G4 E4 C4&#10;C4 C#4 D4 D#4 E4 F4 F#4 G4&#10;G4 F#4 F4 E4 D#4 D4 C#4 C4&#10;C4 F4 G4 E4 A4 D4 B4 C5&#10;D4 E4 F4 G4 A4 B4 C5 D5&#10;E4 F4 G4 A4 B4 C5 D5 E5"
         ></textarea>
         <div class="button-group">
           <button id="train" class="primary">Train Markov Chain</button>
           <button id="playTraining" class="secondary">Play Training Sequence</button>
+          <button id="loadEnhanced" class="secondary">Load Enhanced Training Data</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top: 0; color: #374151">Markov Chain Parameters</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <label for="order">Order (Context Length):</label>
+            <select id="order">
+              <option value="1">1 (Simple)</option>
+              <option value="2" selected>2 (Balanced)</option>
+              <option value="3">3 (Complex)</option>
+              <option value="4">4 (Very Complex)</option>
+            </select>
+          </div>
+          <div>
+            <label for="smoothing">Smoothing:</label>
+            <input id="smoothing" type="range" min="0.05" max="0.5" step="0.05" value="0.2" />
+            <div style="font-size: 12px; color: #6c757d; text-align: center" id="smoothingValue">
+              0.2
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="temperature">Temperature (Randomness):</label>
+          <input id="temperature" type="range" min="0.1" max="2.0" step="0.1" value="1.0" />
+          <div style="font-size: 12px; color: #6c757d; text-align: center" id="temperatureValue">
+            1.0 (Normal)
+          </div>
         </div>
       </div>
 
       <div class="card">
         <label for="sequenceLength">Sequence Length:</label>
-        <input id="sequenceLength" type="number" min="4" max="20" value="8" />
+        <input id="sequenceLength" type="number" min="4" max="32" value="12" />
         <div class="button-group">
           <button id="generate" class="primary">Generate New Sequence</button>
           <button id="play" disabled>Play Sequence</button>
@@ -161,6 +191,24 @@
         <label>Generated Sequence:</label>
         <div id="output" class="output">
           Click "Train Markov Chain" first, then "Generate New Sequence"
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Markov Chain Analysis:</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <h4 style="margin: 0 0 8px 0; color: #374151">Statistics</h4>
+            <div id="stats" style="font-size: 13px; line-height: 1.4">
+              Train the chain to see statistics
+            </div>
+          </div>
+          <div>
+            <h4 style="margin: 0 0 8px 0; color: #374151">Transition Analysis</h4>
+            <div id="analysis" style="font-size: 13px; line-height: 1.4">
+              Train the chain to see analysis
+            </div>
+          </div>
         </div>
       </div>
 

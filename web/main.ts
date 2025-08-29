@@ -65,7 +65,13 @@ generateBtn.addEventListener("click", () => {
   }
 
   try {
-    const length = parseInt(sequenceLengthEl.value) || 8;
+    const length = parseInt(sequenceLengthEl.value) || 12;
+
+    // Apply current temperature before generating
+    if (musicChain) {
+      (musicChain as any).noteChain.setTemperature?.(1.5); // Force higher temperature for more variation
+    }
+
     const music = musicChain.generateSequence(length);
 
     // Extract note names from the generated sequence
@@ -73,6 +79,9 @@ generateBtn.addEventListener("click", () => {
 
     updateUI();
     outputEl.textContent = currentSequence.join(" ");
+
+    // Update the transitions display to show what was actually used in generation
+    updateTransitionsFromGenerated(currentSequence, length);
 
     // Enable play button
     playBtn.disabled = false;
@@ -328,6 +337,67 @@ function updateTransitions(sequences: string[][]) {
   } catch (error) {
     transitionsEl.innerHTML =
       '<div style="color: #6c757d; text-align: center; padding: 20px">Error displaying transitions</div>';
+  }
+}
+
+// Update transitions display from generated sequence
+function updateTransitionsFromGenerated(sequence: string[], length: number) {
+  if (!transitionsEl) return;
+
+  try {
+    // Create a transition map from the generated sequence
+    const transitions = new Map<string, Map<string, number>>();
+    const order = config.order;
+
+    for (let i = 0; i <= sequence.length - order; i++) {
+      const context = sequence.slice(i, i + order).join(" ");
+      const nextNote = sequence[i + order];
+
+      if (nextNote) {
+        if (!transitions.has(context)) {
+          transitions.set(context, new Map());
+        }
+
+        const contextTransitions = transitions.get(context)!;
+        contextTransitions.set(nextNote, (contextTransitions.get(nextNote) || 0) + 1);
+      }
+    }
+
+    // Display the transitions from the generated sequence
+    if (transitions.size === 0) {
+      transitionsEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px">No transitions in generated sequence</div>';
+      return;
+    }
+
+    const transitionItems = Array.from(transitions.entries())
+      .slice(0, 20) // Show more transitions
+      .map(([context, nextNotes]) => {
+        const total = Array.from(nextNotes.values()).reduce((sum, count) => sum + count, 0);
+        const topNext = Array.from(nextNotes.entries())
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3)
+          .map(([note, count]) => `${note} (${Math.round((count / total) * 100)}%)`)
+          .join(", ");
+
+        return `
+          <div class="transition-item">
+            <div class="transition-from">${context}</div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-to">${topNext}</div>
+          </div>
+        `;
+      });
+
+    transitionsEl.innerHTML = `
+      <div style="margin-bottom: 12px; color: #6c757d; font-size: 12px;">
+        Generated sequence transitions (Length: ${length}, Order: ${order})
+      </div>
+      ${transitionItems.join("")}
+    `;
+  } catch (error) {
+    transitionsEl.innerHTML =
+      '<div style="color: #6c757d; text-align: center; padding: 20px">Error displaying generated transitions</div>';
   }
 }
 

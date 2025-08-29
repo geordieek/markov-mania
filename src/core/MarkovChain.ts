@@ -135,46 +135,6 @@ export class MarkovChain {
   }
 
   /**
-   * Select the next element based on current context and transition probabilities
-   * This implements the probabilistic nature of the Markov chain
-   */
-  private selectNextElement(contextKey: string): string | null {
-    const state = this.states.get(contextKey);
-    if (!state || state.transitions.size === 0) {
-      return null;
-    }
-
-    // Use weighted random selection based on probabilities
-    const random = Math.random();
-    let cumulativeProbability = 0;
-
-    for (const [nextElement, probability] of state.transitions) {
-      cumulativeProbability += probability;
-      if (random <= cumulativeProbability) {
-        return nextElement;
-      }
-    }
-
-    // Fallback to first element (shouldn't happen with normalized probabilities)
-    return Array.from(state.transitions.keys())[0] || null;
-  }
-
-  /**
-   * Get a random starting context from training data
-   */
-  private getRandomStartContext(): string[] {
-    if (this.trainingData.length === 0) {
-      throw new Error("No training data available");
-    }
-
-    const randomSequence = this.trainingData[Math.floor(Math.random() * this.trainingData.length)];
-    const startIndex = Math.floor(
-      Math.random() * Math.max(1, randomSequence.length - this.config.order)
-    );
-    return randomSequence.slice(startIndex, startIndex + this.config.order);
-  }
-
-  /**
    * Get statistics about the trained Markov chain
    * Useful for understanding the learned patterns
    */
@@ -194,6 +154,133 @@ export class MarkovChain {
       totalTransitions,
       averageTransitionsPerState: totalTransitions / this.states.size,
     };
+  }
+
+  /**
+   * Get detailed transition analysis for debugging and understanding
+   */
+  getTransitionAnalysis(): {
+    deterministicStates: number;
+    probabilisticStates: number;
+    transitionDistribution: { [key: string]: number };
+    sampleTransitions: Array<{
+      context: string;
+      transitions: Array<{ element: string; probability: number }>;
+    }>;
+  } {
+    let deterministicStates = 0;
+    let probabilisticStates = 0;
+    const transitionDistribution: { [key: string]: number } = {};
+    const sampleTransitions: Array<{
+      context: string;
+      transitions: Array<{ element: string; probability: number }>;
+    }> = [];
+
+    for (const [context, state] of this.states.entries()) {
+      const transitions = Array.from(state.transitions.entries()).map(([element, prob]) => ({
+        element,
+        probability: prob,
+      }));
+
+      // Count deterministic vs probabilistic states
+      if (transitions.length === 1 || transitions.every((t) => t.probability > 0.95)) {
+        deterministicStates++;
+      } else {
+        probabilisticStates++;
+      }
+
+      // Track transition distribution
+      const numTransitions = transitions.length;
+      transitionDistribution[numTransitions] = (transitionDistribution[numTransitions] || 0) + 1;
+
+      // Sample some transitions for analysis
+      if (sampleTransitions.length < 5) {
+        sampleTransitions.push({ context, transitions });
+      }
+    }
+
+    return {
+      deterministicStates,
+      probabilisticStates,
+      transitionDistribution,
+      sampleTransitions,
+    };
+  }
+
+  /**
+   * Set temperature for generation (higher = more random, lower = more deterministic)
+   */
+  setTemperature(temperature: number): void {
+    this.config.temperature = Math.max(0.1, Math.min(2.0, temperature));
+  }
+
+  /**
+   * Apply temperature to transition probabilities during generation
+   */
+  private applyTemperature(transitions: Map<string, number>): Map<string, number> {
+    if (!this.config.temperature || this.config.temperature === 1.0) {
+      return transitions;
+    }
+
+    const temp = this.config.temperature;
+    const adjustedTransitions = new Map<string, number>();
+
+    // Apply temperature: higher temp = more uniform, lower temp = more peaked
+    for (const [element, probability] of transitions.entries()) {
+      const adjustedProb = Math.pow(probability, 1 / temp);
+      adjustedTransitions.set(element, adjustedProb);
+    }
+
+    // Renormalize
+    const total = Array.from(adjustedTransitions.values()).reduce((sum, prob) => sum + prob, 0);
+    for (const [element, probability] of adjustedTransitions.entries()) {
+      adjustedTransitions.set(element, probability / total);
+    }
+
+    return adjustedTransitions;
+  }
+
+  /**
+   * Select the next element based on current context and transition probabilities
+   * This implements the probabilistic nature of the Markov chain
+   */
+  private selectNextElement(contextKey: string): string | null {
+    const state = this.states.get(contextKey);
+    if (!state || state.transitions.size === 0) {
+      return null;
+    }
+
+    // Apply temperature if set
+    const transitions = this.applyTemperature(state.transitions);
+
+    // Use weighted random selection based on probabilities
+    const random = Math.random();
+    let cumulativeProbability = 0;
+
+    for (const [nextElement, probability] of transitions) {
+      cumulativeProbability += probability;
+      if (random <= cumulativeProbability) {
+        return nextElement;
+      }
+    }
+
+    // Fallback to first element (shouldn't happen with normalized probabilities)
+    return Array.from(transitions.keys())[0] || null;
+  }
+
+  /**
+   * Get a random starting context from training data
+   */
+  private getRandomStartContext(): string[] {
+    if (this.trainingData.length === 0) {
+      throw new Error("No training data available");
+    }
+
+    const randomSequence = this.trainingData[Math.floor(Math.random() * this.trainingData.length)];
+    const startIndex = Math.floor(
+      Math.random() * Math.max(1, randomSequence.length - this.config.order)
+    );
+    return randomSequence.slice(startIndex, startIndex + this.config.order);
   }
 
   /**

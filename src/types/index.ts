@@ -48,6 +48,8 @@ export interface MarkovConfig {
   smoothing: number;
   /** Maximum sequence length to generate */
   maxLength: number;
+  /** Temperature for generation (higher = more random, lower = more deterministic) */
+  temperature?: number;
 }
 
 // Generated Music Output
