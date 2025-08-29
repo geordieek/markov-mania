@@ -182,34 +182,6 @@ describe("MusicMarkovChain", () => {
     });
   });
 
-  describe("appending new musical data", () => {
-    it("should append new note sequences", () => {
-      const initialNotes = [
-        ["C4", "D4", "E4", "F4"],
-        ["G4", "A4", "B4", "C5"],
-      ];
-      const initialRhythms = [
-        ["4", "4", "4", "4"],
-        ["8", "8", "4", "2"],
-      ];
-      musicChain.trainWithMusic(initialNotes, initialRhythms);
-
-      const newNotes = [
-        ["G4", "A4", "B4", "C5"],
-        ["D5", "E5", "F#5", "G5"],
-      ];
-      const newRhythms = [
-        ["8", "8", "4", "2"],
-        ["4", "4", "4", "4"],
-      ];
-      musicChain.trainWithMusicAppend(newNotes, newRhythms);
-
-      const stats = musicChain.getMusicStats();
-      expect(stats.noteStats.totalStates).toBeGreaterThan(0);
-      expect(stats.rhythmStats.totalStates).toBeGreaterThan(0);
-    });
-  });
-
   describe("musical constraints", () => {
     it("should respect pitch range constraints", () => {
       musicChain.setPitchRange(48, 72); // C3 to C5

@@ -35,14 +35,6 @@ export class MusicMarkovChain extends MarkovChain {
   }
 
   /**
-   * Append new musical data to existing training, preserving previous corpus
-   */
-  trainWithMusicAppend(noteSequences: string[][], rhythmPatterns: string[][]): void {
-    (this.noteChain as any).trainAppend?.(noteSequences);
-    (this.rhythmChain as any).trainAppend?.(rhythmPatterns);
-  }
-
-  /**
    * Append only melody tokens to the melodic chain
    */
   appendMelodySequence(melody: string[]): void {
@@ -278,29 +270,6 @@ export class MusicMarkovChain extends MarkovChain {
     // Forward to internal chains
     (this.noteChain as any).setTemperature?.(temperature);
     (this.rhythmChain as any).setTemperature?.(temperature);
-  }
-
-  setSamplingConstraints(opts: {
-    repetitionPenalty?: number;
-    repetitionWindow?: number;
-    topK?: number | null;
-    topP?: number | null;
-  }): void {
-    const { repetitionPenalty, repetitionWindow, topK, topP } = opts;
-    if (repetitionPenalty || repetitionWindow) {
-      (this.noteChain as any).setRepetitionPenalty?.(repetitionPenalty ?? 1, repetitionWindow ?? 3);
-    }
-    if (typeof topK !== "undefined") {
-      (this.noteChain as any).setTopK?.(topK ?? null);
-    }
-    if (typeof topP !== "undefined") {
-      (this.noteChain as any).setTopP?.(topP ?? null);
-    }
-  }
-
-  setMaxCorpusSize(maxSize: number | null): void {
-    (this.noteChain as any).setMaxCorpusSize?.(maxSize);
-    (this.rhythmChain as any).setMaxCorpusSize?.(maxSize);
   }
 
   /**

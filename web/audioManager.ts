@@ -252,18 +252,10 @@ export class AudioManager {
     }
   }
 
+  // TODO: Implement into Web UI
   // Method to change tempo
   setTempo(tempo: number): void {
     Tone.getTransport().bpm.value = tempo;
-  }
-
-  // Cleanup method
-  dispose(): void {
-    this.stop();
-    if (this.synth) {
-      this.synth.dispose();
-      this.synth = null;
-    }
   }
 
   // Get current tempo

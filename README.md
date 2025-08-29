@@ -94,19 +94,18 @@ const config: MarkovConfig = {
 #### `MusicMarkovChain`
 
 - `trainWithMusic(notes, rhythms): void` - Train with musical data
-- `trainWithMusicAppend(notes, rhythms): void` - Append to existing training
 - `appendMelodySequence(melody): void` - Append only melody tokens
 - `generateSequence(length: number): MusicSequence` - Generate musical sequence
 - `setKey(key: string): void` - Set musical key
 - `setTempo(tempo: number): void` - Set tempo
 - `setTemperature(temperature: number): void` - Set generation randomness
-- `setSamplingConstraints(opts): void` - Set repetition and sampling constraints
-- `setMaxCorpusSize(maxSize: number | null): void` - Limit training data size
 - `resetAll(): void` - Reset all internal chains
 - `setPitchRange(minPitch: number, maxPitch: number): void` - Set MIDI pitch range
 - `getMusicStats(): MusicStats` - Get statistics from all chains
 
 #### `MIDIGenerator`
+
+_(WIP) For future M4L integration_
 
 - `generateMIDI(musicSequence: MusicSequence): MIDISequence` - Generate MIDI sequence
 - `generateMIDIFile(midiSequence: MIDISequence): Uint8Array` - Generate MIDI file

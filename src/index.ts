@@ -2,11 +2,13 @@
  * Markov Mania - Main Entry Point
  */
 
-// Export core classes
+// Core Libraries
 export { MarkovChain } from "./core/MarkovChain";
 export { MusicMarkovChain } from "./music/MusicMarkovChain";
+// TODO: Below not currently integrated, will be for future M4L integration
+export { MIDIGenerator } from "./music/MIDIGenerator";
 
-// Export types
+// Types
 export * from "./types";
 
 // Export demo
