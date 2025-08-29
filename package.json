@@ -5,13 +5,15 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "build:web": "vite build",
+    "build:all": "pnpm run build && pnpm run build:web",
     "dev": "tsc --watch",
     "dev:web": "vite",
     "test": "jest",
     "start": "node dist/index.js",
     "demo": "node dist/demo/markovManiaDemo.js",
-    "slides": "vite preview --open presentation/slides.html",
-    "clean": "rm -rf dist",
+    "slides": "cd presentation/reveal.js && pnpm start",
+    "clean": "rm -rf dist dist-web",
     "prebuild": "pnpm run clean"
   },
   "author": "",

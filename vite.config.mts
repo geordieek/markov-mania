@@ -14,6 +14,18 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "dist-web"),
     emptyOutDir: true,
+    lib: {
+      entry: resolve(__dirname, "src/index.ts"),
+      name: "MarkovMania",
+      fileName: (format) => `markov-mania.${format}.js`,
+      formats: ["es", "cjs"],
+    },
+    rollupOptions: {
+      external: ["node:url", "node:path"],
+      output: {
+        globals: {},
+      },
+    },
   },
   resolve: {
     alias: {
