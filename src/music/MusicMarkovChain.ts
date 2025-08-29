@@ -174,25 +174,34 @@ export class MusicMarkovChain extends MarkovChain {
 
   /**
    * Parse rhythm string into duration in milliseconds
+   * Supports both number format (4, 8, 16) and legacy word format
    */
   private parseRhythm(rhythmStr: string): number {
     // Simple rhythm parsing (can be extended for more complex notation)
     const beatDuration = (60 / this.tempo) * 1000; // Convert BPM to milliseconds
 
-    switch (rhythmStr) {
-      case "whole":
-        return beatDuration * 4;
-      case "half":
-        return beatDuration * 2;
-      case "quarter":
-        return beatDuration;
-      case "eighth":
-        return beatDuration / 2;
-      case "sixteenth":
-        return beatDuration / 4;
-      default:
-        return beatDuration; // Default to quarter note
+    // Parse number format
+    if (/^\d+$/.test(rhythmStr)) {
+      const rhythmNumber = parseInt(rhythmStr, 10);
+      switch (rhythmNumber) {
+        case 1:
+          return beatDuration * 4; // whole note
+        case 2:
+          return beatDuration * 2; // half note
+        case 4:
+          return beatDuration; // quarter note
+        case 8:
+          return beatDuration / 2; // eighth note
+        case 16:
+          return beatDuration / 4; // sixteenth note
+        case 32:
+          return beatDuration / 8; // thirty-second note
+        default:
+          return beatDuration; // Default to quarter note
+      }
     }
+
+    return beatDuration;
   }
 
   /**

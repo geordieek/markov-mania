@@ -7,6 +7,12 @@ export interface NoteEvent {
   velocity?: number;
 }
 
+export interface RhythmNoteEvent {
+  note: string;
+  rhythm: string; // "4", "8", "16", etc.
+  velocity?: number;
+}
+
 export class AudioManager {
   private synth: Tone.Synth | null = null;
   private isInitialized = false;
@@ -62,7 +68,7 @@ export class AudioManager {
     }
   }
 
-  async playSequence(notes: string[], tempo: number = 120): Promise<void> {
+  async playSequence(notes: string[], tempo: number = 120, rhythms?: string[]): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -76,29 +82,59 @@ export class AudioManager {
     // Set the transport tempo
     Tone.getTransport().bpm.value = tempo;
 
-    // Schedule each note using the transport
-    notes.forEach((note, index) => {
-      const noteTime = index * beatDuration;
-      Tone.getTransport().schedule((time) => {
-        if (this.synth) {
-          this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
-        }
-      }, noteTime);
-    });
+    // If rhythms are provided, use rhythm-aware playback
+    if (rhythms && rhythms.length > 0) {
+      let currentTime = 0;
 
-    this.isPlaying = true;
+      // Schedule each note using its specific rhythm
+      notes.forEach((note, index) => {
+        const rhythm = rhythms[index] || rhythms[0] || "4";
+        const noteDuration = this.parseRhythmToDuration(rhythm, beatDuration);
 
-    // Start the transport
-    Tone.getTransport().start();
+        Tone.getTransport().schedule((time) => {
+          if (this.synth) {
+            this.synth.triggerAttackRelease(note, noteDuration * 0.8, time);
+          }
+        }, currentTime);
 
-    // Stop the transport after sequence completes
-    const totalDuration = notes.length * beatDuration;
-    Tone.getTransport().schedule(() => {
-      Tone.getTransport().stop();
-      this.isPlaying = false;
-    }, totalDuration);
+        // Advance time by the actual rhythm duration
+        currentTime += noteDuration;
+      });
+
+      this.isPlaying = true;
+      Tone.getTransport().start();
+
+      // Stop after sequence completes
+      Tone.getTransport().schedule(() => {
+        Tone.getTransport().stop();
+        this.isPlaying = false;
+      }, currentTime);
+    } else {
+      // Fallback to fixed timing (original behavior)
+      notes.forEach((note, index) => {
+        const noteTime = index * beatDuration;
+        Tone.getTransport().schedule((time) => {
+          if (this.synth) {
+            this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
+          }
+        }, noteTime);
+      });
+
+      this.isPlaying = true;
+      Tone.getTransport().start();
+
+      const totalDuration = notes.length * beatDuration;
+      Tone.getTransport().schedule(() => {
+        Tone.getTransport().stop();
+        this.isPlaying = false;
+      }, totalDuration);
+    }
   }
 
+  /**
+   * Play multiple training sequences with delays between them
+   * This reuses the main playSequence method for each sequence
+   */
   async playTrainingSequences(sequences: string[][], tempo: number = 120): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
@@ -108,45 +144,65 @@ export class AudioManager {
     this.stop();
 
     this.currentTempo = tempo;
-    const beatDuration = 60 / tempo;
     const sequenceDelay = 1; // 1 second between sequences
 
-    // Set the transport tempo
-    Tone.getTransport().bpm.value = tempo;
+    // Play each sequence one by one with delays
+    for (let i = 0; i < sequences.length; i++) {
+      const sequence = sequences[i];
 
-    // Create a sequence that plays all sequences with delays
-    let currentTime = 0;
-
-    sequences.forEach((sequence, seqIndex) => {
       // Add delay between sequences (except the first one)
-      if (seqIndex > 0) {
-        currentTime += sequenceDelay;
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, sequenceDelay * 1000));
       }
 
-      // Schedule each note in the sequence
-      sequence.forEach((note, noteIndex) => {
-        const noteTime = currentTime + noteIndex * beatDuration;
-        Tone.getTransport().schedule((time) => {
-          if (this.synth) {
-            this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
-          }
-        }, noteTime);
+      // Parse rhythm information from training data if available
+      const notes: string[] = [];
+      const rhythms: string[] = [];
+
+      sequence.forEach((token) => {
+        if (token.includes(":")) {
+          const [note, rhythm] = token.split(":");
+          notes.push(note);
+          rhythms.push(rhythm);
+        } else {
+          // Fallback: treat as quarter note if no rhythm specified
+          notes.push(token);
+          rhythms.push("4");
+        }
       });
 
-      // Move to next sequence
-      currentTime += sequence.length * beatDuration;
-    });
+      // Play this sequence using the main method with rhythm information
+      await this.playSequence(notes, tempo, rhythms);
+    }
+  }
 
-    this.isPlaying = true;
-
-    // Start the transport
-    Tone.getTransport().start();
-
-    // Stop the transport after all sequences complete
-    Tone.getTransport().schedule(() => {
-      Tone.getTransport().stop();
-      this.isPlaying = false;
-    }, currentTime);
+  /**
+   * Parse rhythm string to duration in seconds
+   * This matches the rhythm parsing in MusicMarkovChain
+   */
+  private parseRhythmToDuration(rhythmStr: string, beatDuration: number): number {
+    switch (rhythmStr) {
+      case "1":
+        return beatDuration * 4;
+      case "2":
+        return beatDuration * 2;
+      case "4":
+        return beatDuration;
+      case "8":
+        return beatDuration / 2;
+      case "16":
+        return beatDuration / 4;
+      case "32":
+        return beatDuration * 1.5;
+      case "64":
+        return beatDuration * 0.75;
+      case "128":
+        return beatDuration / 3;
+      case "256":
+        return beatDuration / 1.5;
+      default:
+        return beatDuration; // Default to quarter note
+    }
   }
 
   stop(): void {

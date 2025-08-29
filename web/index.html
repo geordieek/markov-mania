@@ -141,6 +141,64 @@
         background: #e3f2fd !important;
         color: #0d47a1;
       }
+
+      .rhythm-display {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .rhythm-item {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-weight: 600;
+        text-align: center;
+        min-width: 60px;
+        position: relative;
+      }
+
+      .rhythm-item[data-rhythm="1"] {
+        background: #e3f2fd;
+        border-color: #1976d2;
+        color: #0d47a1;
+      }
+      .rhythm-item[data-rhythm="2"] {
+        background: #e8f5e8;
+        border-color: #388e3c;
+        color: #1b5e20;
+      }
+      .rhythm-item[data-rhythm="4"] {
+        background: #fff3e0;
+        border-color: #f57c00;
+        color: #e65100;
+      }
+      .rhythm-item[data-rhythm="8"] {
+        background: #fce4ec;
+        border-color: #c2185b;
+        color: #880e4f;
+      }
+      .rhythm-item[data-rhythm="16"] {
+        background: #f1f8e9;
+        border-color: #689f38;
+        color: #33691e;
+      }
+      .rhythm-item[data-rhythm="32"] {
+        background: #f3e5f5;
+        border-color: #7b1fa2;
+        color: #4a148c;
+      }
+
+      .rhythm-fraction {
+        font-size: 18px;
+        margin-bottom: 4px;
+        display: block;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -154,10 +212,14 @@
         <label for="trainingData"
           >Training Sequences (one sequence per line, notes separated by spaces):</label
         >
+        <p style="font-size: 12px; color: #6c757d; margin: 8px 0">
+          Format: Use "note:rhythm" (e.g., "C4:4", "D4:8", "E4:16"). Available rhythms: 1 (whole), 2
+          (half), 4 (quarter), 8 (eighth), 16 (sixteenth), 32 (thirty-second)
+        </p>
         <textarea
           id="trainingData"
           rows="8"
-          placeholder="C4 D4 E4 F4 G4 A4 B4 C5&#10;G3 A3 B3 C4 D4 E4 F#4 G4&#10;F3 G3 A3 Bb3 C4 D4 E4 F4&#10;C4 E4 G4 C5 G4 E4 C4&#10;C4 C#4 D4 D#4 E4 F4 F#4 G4&#10;G4 F#4 F4 E4 D#4 D4 C#4 C4&#10;C4 F4 G4 E4 A4 D4 B4 C5&#10;D4 E4 F4 G4 A4 B4 C5 D5&#10;E4 F4 G4 A4 B4 C5 D5 E5"
+          placeholder="C4:4 E4:4 G4:8 C5:8 C5:2 G4:4 E4:4 C4:4&#10;C4:8 C#4:8 D4:8 D#4:8 E4:8 F4:8 F#4:8 G4:8&#10;G4:4 F#4:8 F4:8 E4:4 D#4:4 D4:16 C#4:4 C4:4&#10;C4:4 F4:4 G4:4 E4:4 A4:4 D4:4 B4:4 C5:4&#10;D4:4 E4:4 F4:4 G4:4 A4:4 B4:4 C5:4 D5:4&#10;E4:4 F4:4 G4:4 A4:4 B4:4 C5:4 D5:4 E5:4&#10;C4:1 D4:2 E4:4 F4:8 G4:16 A4:4 B4:2 C5:1&#10;G4:8 A4:8 B4:4 C5:4 D5:2 E5:4 F5:8 G5:4"
         ></textarea>
         <div class="button-group">
           <button id="train" class="primary">Train Markov Chain</button>
@@ -208,6 +270,15 @@
         <label>Generated Sequence:</label>
         <div id="output" class="output">
           Click "Train Markov Chain" first, then "Generate New Sequence"
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Generated Rhythm Pattern:</label>
+        <div id="rhythmOutput" class="rhythm-display" style="min-height: 80px">
+          <div style="color: #6c757d; text-align: center; padding: 20px; width: 100%">
+            Rhythm pattern will appear here after generation
+          </div>
         </div>
       </div>
 

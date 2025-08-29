@@ -18,8 +18,8 @@ describe("MusicMarkovChain", () => {
         ["G4", "A4", "B4"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "half"],
-        ["eighth", "eighth", "quarter"],
+        ["4", "4", "2"],
+        ["8", "8", "4"],
       ];
 
       expect(() => musicChain.trainWithMusic(noteSequences, rhythmPatterns)).not.toThrow();
@@ -27,7 +27,7 @@ describe("MusicMarkovChain", () => {
 
     test("should generate music after training", () => {
       const noteSequences = [["C4", "D4", "E4"]];
-      const rhythmPatterns = [["quarter", "quarter", "half"]];
+      const rhythmPatterns = [["4", "4", "2"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -47,10 +47,10 @@ describe("MusicMarkovChain", () => {
         ["D4", "E4", "F#4", "G4", "A4", "B4", "C#5", "D5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
-        ["eighth", "eighth", "eighth", "eighth", "quarter", "quarter", "half", "quarter"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
+        ["8", "8", "8", "8", "4", "4", "2", "4"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -68,10 +68,10 @@ describe("MusicMarkovChain", () => {
         ["D4", "G4", "A4", "D4"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "half"],
-        ["quarter", "eighth", "eighth", "half"],
-        ["half", "quarter", "quarter", "quarter"],
+        ["4", "4", "4", "4"],
+        ["8", "8", "4", "2"],
+        ["4", "8", "8", "2"],
+        ["2", "4", "4", "4"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -89,10 +89,10 @@ describe("MusicMarkovChain", () => {
         ["D4", "G4", "A4", "D4", "G4"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "quarter", "half"],
-        ["quarter", "eighth", "eighth", "quarter", "half"],
-        ["half", "quarter", "quarter", "quarter", "quarter"],
+        ["4", "4", "4", "4", "4"],
+        ["8", "8", "4", "4", "2"],
+        ["4", "8", "8", "4", "2"],
+        ["2", "4", "4", "4", "4"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -116,14 +116,14 @@ describe("MusicMarkovChain", () => {
         ["D4", "F#4", "A4", "D5", "F#5", "A5", "D6", "F#6"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
-        ["eighth", "eighth", "eighth", "eighth", "quarter", "quarter", "half", "quarter"],
-        ["half", "quarter", "quarter", "half", "quarter", "quarter", "half", "quarter"],
-        ["quarter", "half", "quarter", "quarter", "half", "quarter", "quarter", "half"],
-        ["eighth", "quarter", "eighth", "quarter", "eighth", "quarter", "eighth", "quarter"],
-        ["quarter", "quarter", "half", "quarter", "quarter", "half", "quarter", "quarter"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
+        ["8", "8", "8", "8", "4", "4", "2", "4"],
+        ["2", "4", "4", "2", "4", "4", "2", "4"],
+        ["4", "2", "4", "4", "2", "4", "4", "2"],
+        ["8", "4", "8", "4", "8", "4", "8", "4"],
+        ["4", "4", "2", "4", "4", "2", "4", "4"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -141,10 +141,10 @@ describe("MusicMarkovChain", () => {
         ["D4", "E4", "F#4", "G4", "A4", "B4", "C#5", "D5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
-        ["eighth", "eighth", "eighth", "eighth", "quarter", "quarter", "half", "quarter"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
+        ["8", "8", "8", "8", "4", "4", "2", "4"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -169,9 +169,9 @@ describe("MusicMarkovChain", () => {
         ["B4", "C5", "D5", "E5", "F#5", "G5", "A5", "B5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -189,8 +189,8 @@ describe("MusicMarkovChain", () => {
         ["G4", "A4", "B4", "C5"],
       ];
       const initialRhythms = [
-        ["quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "half"],
+        ["4", "4", "4", "4"],
+        ["8", "8", "4", "2"],
       ];
       musicChain.trainWithMusic(initialNotes, initialRhythms);
 
@@ -199,8 +199,8 @@ describe("MusicMarkovChain", () => {
         ["D5", "E5", "F#5", "G5"],
       ];
       const newRhythms = [
-        ["eighth", "eighth", "quarter", "half"],
-        ["quarter", "quarter", "quarter", "quarter"],
+        ["8", "8", "4", "2"],
+        ["4", "4", "4", "4"],
       ];
       musicChain.trainWithMusicAppend(newNotes, newRhythms);
 
@@ -220,9 +220,9 @@ describe("MusicMarkovChain", () => {
         ["F4", "G4", "A4", "Bb4", "C5", "D5", "E5", "F5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
       ];
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -242,9 +242,9 @@ describe("MusicMarkovChain", () => {
         ["F4", "G4", "A4", "Bb4", "C5", "D5", "E5", "F5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
       ];
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -261,9 +261,9 @@ describe("MusicMarkovChain", () => {
         ["F4", "G4", "A4", "Bb4", "C5", "D5", "E5", "F5"],
       ];
       const rhythmPatterns = [
-        ["quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter", "quarter"],
-        ["eighth", "eighth", "quarter", "eighth", "eighth", "quarter", "half", "quarter"],
-        ["quarter", "eighth", "eighth", "quarter", "quarter", "eighth", "eighth", "half"],
+        ["4", "4", "4", "4", "4", "4", "4", "4"],
+        ["8", "8", "4", "8", "8", "4", "2", "4"],
+        ["4", "8", "8", "4", "4", "8", "8", "2"],
       ];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
@@ -279,7 +279,7 @@ describe("MusicMarkovChain", () => {
   describe("Musical Output Structure", () => {
     test("should generate music with correct structure", () => {
       const noteSequences = [["C4", "D4", "E4", "F4"]];
-      const rhythmPatterns = [["quarter", "quarter", "quarter", "quarter"]];
+      const rhythmPatterns = [["4", "4", "4", "4"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -304,7 +304,7 @@ describe("MusicMarkovChain", () => {
 
     test("should respect sequence length parameter", () => {
       const noteSequences = [["C4", "D4", "E4", "F4", "G4"]];
-      const rhythmPatterns = [["quarter", "quarter", "quarter", "quarter", "quarter"]];
+      const rhythmPatterns = [["4", "4", "4", "4", "4"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -322,7 +322,7 @@ describe("MusicMarkovChain", () => {
 
       // Test that key changes are applied
       const noteSequences = [["G4", "A4", "B4"]];
-      const rhythmPatterns = [["quarter", "quarter", "half"]];
+      const rhythmPatterns = [["4", "4", "2"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -335,7 +335,7 @@ describe("MusicMarkovChain", () => {
 
       // Test that tempo affects rhythm calculations
       const noteSequences = [["C4", "D4"]];
-      const rhythmPatterns = [["quarter", "quarter"]];
+      const rhythmPatterns = [["4", "4"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -347,7 +347,7 @@ describe("MusicMarkovChain", () => {
   describe("Integration with Base Markov Chain", () => {
     test("should provide music statistics", () => {
       const noteSequences = [["C4", "D4", "E4"]];
-      const rhythmPatterns = [["quarter", "quarter", "half"]];
+      const rhythmPatterns = [["4", "4", "2"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 
@@ -372,7 +372,7 @@ describe("MusicMarkovChain", () => {
 
     test("should handle malformed note strings", () => {
       const noteSequences = [["C4", "INVALID", "E4"]];
-      const rhythmPatterns = [["quarter", "quarter", "half"]];
+      const rhythmPatterns = [["4", "4", "2"]];
 
       musicChain.trainWithMusic(noteSequences, rhythmPatterns);
 

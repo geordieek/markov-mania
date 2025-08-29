@@ -10,6 +10,7 @@ const playBtn = document.getElementById("play") as HTMLButtonElement;
 const stopBtn = document.getElementById("stop") as HTMLButtonElement;
 const sequenceLengthEl = document.getElementById("sequenceLength") as HTMLInputElement;
 const outputEl = document.getElementById("output") as HTMLDivElement;
+const rhythmOutputEl = document.getElementById("rhythmOutput") as HTMLDivElement;
 const transitionsEl = document.getElementById("transitions") as HTMLDivElement;
 const statsEl = document.getElementById("stats") as HTMLDivElement;
 const analysisEl = document.getElementById("analysis") as HTMLDivElement;
@@ -76,15 +77,19 @@ orderEl.addEventListener("change", () => {
     // Reset training state since order affects the model
     isTrained = false;
     currentSequence = [];
+    currentRhythms = [];
     updateUI();
     updateTransitions([]);
     outputEl.textContent = "Order changed. Please retrain the Markov chain.";
+    rhythmOutputEl.innerHTML =
+      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Rhythm pattern will appear here after generation</div>';
   }
 });
 
 // State
 let isTrained = false;
 let currentSequence: string[] = [];
+let currentRhythms: string[] = [];
 let audioManager: AudioManager;
 
 // Initialize audio manager
@@ -108,11 +113,40 @@ trainBtn.addEventListener("click", () => {
   console.log("Training with config:", config);
 
   try {
+    // Parse training data with rhythm information
     const sequences = trainingText
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
       .map((line) => line.split(/\s+/));
+
+    // Separate notes and rhythms
+    const noteSequences: string[][] = [];
+    const rhythmSequences: string[][] = [];
+
+    sequences.forEach((sequence) => {
+      const notes: string[] = [];
+      const rhythms: string[] = [];
+
+      sequence.forEach((token) => {
+        if (token.includes(":")) {
+          const [note, rhythm] = token.split(":");
+          notes.push(note);
+          rhythms.push(rhythm);
+        } else {
+          // Fallback: treat as quarter note if no rhythm specified
+          notes.push(token);
+          console.error("No rhythm specified, using quarter note as fallback");
+          rhythms.push("4");
+        }
+      });
+
+      noteSequences.push(notes);
+      rhythmSequences.push(rhythms);
+    });
+
+    console.log("Parsed note sequences:", noteSequences);
+    console.log("Parsed rhythm sequences:", rhythmSequences);
 
     // Reset and train with current config
     musicChain.resetAll?.();
@@ -126,9 +160,12 @@ trainBtn.addEventListener("click", () => {
     (musicChain as any).noteChain.setTemperature?.(config.temperature || 1.0);
     (musicChain as any).rhythmChain.setTemperature?.(config.temperature || 1.0);
 
-    musicChain.trainWithMusic(sequences, sequences);
+    // Train with separate note and rhythm sequences
+    musicChain.trainWithMusic(noteSequences, rhythmSequences);
 
     isTrained = true;
+    currentSequence = [];
+    currentRhythms = [];
     updateUI();
     // Show the transitions that were actually used in generation
     showGeneratedTransitions(currentSequence);
@@ -136,6 +173,8 @@ trainBtn.addEventListener("click", () => {
     updateAnalysis();
     updateTransitions(sequences);
     outputEl.textContent = `Trained with ${sequences.length} sequences! Click "Generate New Sequence" to create music.`;
+    rhythmOutputEl.innerHTML =
+      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Rhythm pattern will appear here after generation</div>';
   } catch (error) {
     outputEl.textContent = `Error training: ${error}`;
   }
@@ -159,8 +198,39 @@ generateBtn.addEventListener("click", () => {
     // Extract note names from the generated sequence
     currentSequence = music.notes.map((note) => getNoteName(note.pitch));
 
+    // Extract rhythm information from the generated sequence
+    currentRhythms = music.notes.map((note) => {
+      // Convert duration back to rhythm string for display
+      const beatDuration = (60 / 120) * 1000; // 120 BPM in milliseconds
+      const duration = note.duration;
+
+      if (duration >= beatDuration * 4) return "1";
+      if (duration >= beatDuration * 2) return "2";
+      if (duration >= beatDuration) return "4";
+      if (duration >= beatDuration / 2) return "8";
+      if (duration >= beatDuration / 4) return "16";
+      if (duration >= beatDuration / 8) return "32";
+      return "4";
+    });
+
+    console.log("Generated rhythms:", currentRhythms);
+    console.log(
+      "Generated note durations:",
+      music.notes.map((n) => n.duration)
+    );
+
     updateUI();
     outputEl.textContent = currentSequence.join(" ");
+
+    // Display rhythm pattern visually
+    rhythmOutputEl.innerHTML = currentRhythms
+      .map((rhythm) => {
+        const fraction = getRhythmFraction(rhythm);
+        return `<div class="rhythm-item" data-rhythm="${rhythm}">
+        <span class="rhythm-fraction">${fraction}</span>
+      </div>`;
+      })
+      .join("");
 
     // Highlight which transitions were used in generation
     showGeneratedTransitions(currentSequence);
@@ -177,7 +247,8 @@ playBtn.addEventListener("click", async () => {
   if (!currentSequence.length) return;
 
   try {
-    await audioManager.playSequence(currentSequence);
+    // Use the enhanced playSequence method that handles rhythms
+    await audioManager.playSequence(currentSequence, 120, currentRhythms);
     updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing: ${error}`;
@@ -232,6 +303,34 @@ function getNoteName(pitch: number): string {
   const octave = Math.floor(pitch / 12) - 1;
   const idx = pitch % 12;
   return `${noteNames[idx]}${octave}`;
+}
+
+// Get rhythm fraction for display
+function getRhythmFraction(rhythm: string): string {
+  // Handle number format (4 = quarter, 8 = eighth, 16 = sixteenth, etc.)
+  if (/^\d+$/.test(rhythm)) {
+    const rhythmNumber = parseInt(rhythm, 10);
+    switch (rhythmNumber) {
+      case 1:
+        return "1";
+      case 2:
+        return "1/2";
+      case 4:
+        return "1/4";
+      case 8:
+        return "1/8";
+      case 16:
+        return "1/16";
+      case 32:
+        return "1/32";
+      default:
+        return `1/${rhythmNumber}`;
+    }
+  }
+
+  // Fallback to quarter note
+  console.error("Rhythm information couldn't be parsed");
+  return `1/4`;
 }
 
 // Update UI state
@@ -360,22 +459,6 @@ function showGeneratedTransitions(sequence: string[]) {
       }
     }
   });
-
-  // Add a small indicator showing which transitions were used
-  const existingHeader = transitionsEl.querySelector(".transitions-header");
-  if (!existingHeader) {
-    const header = document.createElement("div");
-    header.className = "transitions-header";
-    header.style.cssText = "margin-bottom: 12px; color: #6c757d; font-size: 12px;";
-    header.innerHTML = `
-      <div>Training Data Transitions</div>
-      <div style="font-size: 10px; margin-top: 4px;">
-        <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; margin-right: 8px;">Used</span>
-        <span style="background: #6c757d; color: white; padding: 2px 6px; border-radius: 3px;">Unused</span>
-      </div>
-    `;
-    transitionsEl.insertBefore(header, transitionsEl.firstChild);
-  }
 
   // Also show which transitions were actually used in generation
   const usedHeader = document.createElement("div");
