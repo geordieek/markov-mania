@@ -66,10 +66,16 @@ export class MusicMarkovChain extends MarkovChain {
    * Generate a complete musical sequence from the trained chains
    */
   generateSequence(sequenceLength: number = 16): MusicSequence {
+    console.log(`MusicMarkovChain.generateSequence() called with length: ${sequenceLength}`);
+
     // Generate different musical layers
     const melody = this.generateMelody(sequenceLength);
     const harmony = this.generateHarmony(sequenceLength);
     const rhythm = this.generateRhythm(sequenceLength);
+
+    console.log(
+      `Generated melody length: ${melody.length}, harmony: ${harmony.length}, rhythm: ${rhythm.length}`
+    );
 
     // Combine them into a coherent musical sequence
     return this.combineMusicalLayers(melody, harmony, rhythm);
@@ -79,27 +85,27 @@ export class MusicMarkovChain extends MarkovChain {
    * Generate a melodic sequence using the note Markov chain
    */
   private generateMelody(length: number): string[] {
-    // Generate a sequence and limit it to the desired length
-    const generated = this.noteChain.generate();
-    return generated.slice(0, length);
+    console.log(`generateMelody() called with length: ${length}`);
+    // Generate a sequence with the exact length requested
+    const result = this.noteChain.generate(length);
+    console.log(`generateMelody() returned: ${result.length} notes`);
+    return result;
   }
 
   /**
    * Generate a harmonic progression using the chord Markov chain
    */
   private generateHarmony(length: number): string[] {
-    // Generate a sequence and limit it to the desired length
-    const generated = this.chordChain.generate();
-    return generated.slice(0, length);
+    // Generate a sequence with the exact length requested
+    return this.chordChain.generate(length);
   }
 
   /**
    * Generate a rhythm pattern using the rhythm Markov chain
    */
   private generateRhythm(length: number): string[] {
-    // Generate a sequence and limit it to the desired length
-    const generated = this.rhythmChain.generate();
-    return generated.slice(0, length);
+    // Generate a sequence with the exact length requested
+    return this.rhythmChain.generate(length);
   }
 
   /**
