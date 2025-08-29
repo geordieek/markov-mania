@@ -1,206 +1,246 @@
-import { MarkovChain } from "../src/core/MarkovChain";
-import type { MarkovConfig } from "../src/types";
-import * as Tone from "tone";
+import { MusicMarkovChain } from "@src/music/MusicMarkovChain";
+import type { MarkovConfig } from "@src/types";
 
-// Get DOM elements
+// DOM elements
 const trainingDataEl = document.getElementById("trainingData") as HTMLTextAreaElement;
 const trainBtn = document.getElementById("train") as HTMLButtonElement;
-const sequenceLengthEl = document.getElementById("sequenceLength") as HTMLInputElement;
 const generateBtn = document.getElementById("generate") as HTMLButtonElement;
-const outputEl = document.getElementById("output") as HTMLDivElement;
 const playBtn = document.getElementById("play") as HTMLButtonElement;
 const stopBtn = document.getElementById("stop") as HTMLButtonElement;
+const sequenceLengthEl = document.getElementById("sequenceLength") as HTMLInputElement;
+const outputEl = document.getElementById("output") as HTMLDivElement;
+const transitionsEl = document.getElementById("transitions") as HTMLDivElement;
 
-// Create Markov chain with simple configuration
-const config: MarkovConfig = {
-  order: 2, // Look at 2 previous notes to predict the next one
-  smoothing: 0.1, // Small smoothing to avoid zero probabilities
-  maxLength: 20, // Maximum sequence length
-};
+// Markov chain instance
+const config: MarkovConfig = { order: 2, smoothing: 0.1, maxLength: 64 };
+const musicChain = new MusicMarkovChain(config);
 
-const markovChain = new MarkovChain(config);
+// State
 let isTrained = false;
 let currentSequence: string[] = [];
-let synth: Tone.PolySynth<Tone.Synth<Tone.SynthOptions>> | null = null;
-let part: Tone.Part | null = null;
+let audioContext: AudioContext | null = null;
+let oscillator: OscillatorNode | null = null;
+let gainNode: GainNode | null = null;
 
-// Log function for output
-function log(message: string) {
-  outputEl.textContent = message;
-}
+// Train the Markov chain
+trainBtn.addEventListener("click", () => {
+  let trainingText = trainingDataEl.value.trim();
 
-// Initialize audio context
-async function initAudio() {
-  if (Tone.getContext().state !== "running") {
-    await Tone.start();
+  // If no input, use the placeholder text as default training data
+  if (!trainingText) {
+    trainingText = trainingDataEl.placeholder;
+    trainingDataEl.value = trainingText; // Show the user what's being used
   }
-  if (!synth) {
-    synth = new Tone.PolySynth(Tone.Synth).toDestination();
-  }
-}
-
-// Convert note name to frequency
-function noteToFrequency(noteName: string): number {
-  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const match = noteName.match(/^([A-G](?:#|b)?)(\d+)$/);
-  if (!match) return 440; // Default to A4 if parsing fails
-
-  let name = match[1];
-  const octave = parseInt(match[2], 10);
-
-  // Handle flats
-  const flatToSharp: Record<string, string> = {
-    Ab: "G#",
-    Bb: "A#",
-    Cb: "B",
-    Db: "C#",
-    Eb: "D#",
-    Fb: "E",
-    Gb: "F#",
-  };
-  if (name.endsWith("b") && flatToSharp[name]) {
-    name = flatToSharp[name];
-  }
-
-  const noteIndex = noteNames.indexOf(name);
-  if (noteIndex === -1) return 440;
-
-  // Calculate frequency: A4 = 440Hz, each semitone is 2^(1/12)
-  const semitonesFromA4 = (octave - 4) * 12 + noteIndex - 9; // 9 is A's index
-  return 440 * Math.pow(2, semitonesFromA4 / 12);
-}
-
-// Play the current sequence
-async function playSequence() {
-  if (!currentSequence.length) {
-    log("No sequence to play! Generate one first.");
-    return;
-  }
-
-  await initAudio();
-
-  if (part) {
-    part.stop();
-    part.dispose();
-  }
-
-  // Create a sequence of notes with timing
-  const events: Array<{ time: number; note: string; duration: number }> = [];
-  currentSequence.forEach((note, index) => {
-    events.push({
-      time: index * 0.5, // Each note gets 0.5 seconds
-      note: note,
-      duration: 0.4, // Slight gap between notes
-    });
-  });
-
-  part = new Tone.Part(
-    (time, event) => {
-      const freq = noteToFrequency(event.note);
-      synth!.triggerAttackRelease(freq, event.duration, time);
-    },
-    events.map((e) => [e.time, e] as [number, typeof e])
-  );
-
-  part.start(0);
-  Tone.Transport.start();
-  log(`🎵 Playing sequence: ${currentSequence.join(" ")}`);
-}
-
-// Stop playback
-function stopSequence() {
-  if (part) {
-    part.stop();
-    part.dispose();
-    part = null;
-  }
-  Tone.Transport.stop();
-  log("⏹️ Stopped playback");
-}
-
-// Train the Markov chain with the input data
-function trainChain() {
-  const trainingText = trainingDataEl.value.trim();
 
   if (!trainingText) {
-    log("Please enter some training sequences first!");
+    outputEl.textContent = "Please enter some training sequences first.";
     return;
   }
-
-  // Parse training data - each line is a sequence, notes separated by spaces
-  const sequences = trainingText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => line.split(/\s+/));
-
-  if (sequences.length === 0) {
-    log("No valid sequences found. Please check your input format.");
-    return;
-  }
-
-  // Reset and train the chain
-  markovChain.reset();
-  markovChain.train(sequences);
-
-  isTrained = true;
-  log(
-    `✅ Trained on ${sequences.length} sequences!\n\nClick "Generate New Sequence" to create music.`
-  );
-
-  // Show some info about what was learned
-  const totalTokens = sequences.reduce((sum, seq) => sum + seq.length, 0);
-  console.log(`Trained on ${totalTokens} total tokens across ${sequences.length} sequences`);
-}
-
-// Generate a new sequence
-function generateSequence() {
-  if (!isTrained) {
-    log("Please train the Markov chain first!");
-    return;
-  }
-
-  const length = parseInt(sequenceLengthEl.value);
 
   try {
-    // Generate the sequence
-    const generated = markovChain.generate();
+    const sequences = trainingText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => line.split(/\s+/));
 
-    // Limit to requested length
-    currentSequence = generated.slice(0, length);
+    // Reset and train
+    musicChain.resetAll?.();
+    musicChain.trainWithMusic(sequences, sequences, sequences);
 
-    // Format the output nicely
-    const formattedSequence = currentSequence.join(" ");
+    isTrained = true;
+    updateUI();
+    updateTransitions(sequences);
+    outputEl.textContent = `Trained with ${sequences.length} sequences! Click "Generate New Sequence" to create music.`;
+  } catch (error) {
+    outputEl.textContent = `Error training: ${error}`;
+  }
+});
 
-    log(
-      `🎵 Generated Sequence (${currentSequence.length} notes):\n\n${formattedSequence}\n\nClick "Play Sequence" to hear it!`
-    );
+// Generate new sequence
+generateBtn.addEventListener("click", () => {
+  if (!isTrained) {
+    outputEl.textContent = "Please train the Markov chain first!";
+    return;
+  }
+
+  try {
+    const length = parseInt(sequenceLengthEl.value) || 8;
+    const music = musicChain.generateSequence(length);
+
+    // Extract note names from the generated sequence
+    currentSequence = music.notes.map((note) => getNoteName(note.pitch));
+
+    updateUI();
+    outputEl.textContent = currentSequence.join(" ");
 
     // Enable play button
     playBtn.disabled = false;
-
-    // Also log to console for debugging
-    console.log("Generated sequence:", currentSequence);
   } catch (error) {
-    log(`Error generating sequence: ${error}`);
-    console.error("Generation error:", error);
+    outputEl.textContent = `Error generating: ${error}`;
+  }
+});
+
+// Play sequence
+playBtn.addEventListener("click", async () => {
+  if (!currentSequence.length) return;
+
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    playSequence(currentSequence);
+    playBtn.disabled = true;
+    stopBtn.disabled = false;
+  } catch (error) {
+    outputEl.textContent = `Error playing: ${error}`;
+  }
+});
+
+// Stop playing
+stopBtn.addEventListener("click", () => {
+  if (oscillator) {
+    oscillator.stop();
+    oscillator = null;
+  }
+  if (gainNode) {
+    gainNode.gain.setValueAtTime(0, audioContext?.currentTime || 0);
+  }
+  playBtn.disabled = false;
+  stopBtn.disabled = true;
+});
+
+// Play a sequence of notes
+function playSequence(notes: string[]) {
+  if (!audioContext) return;
+
+  const tempo = 120; // BPM
+  const beatDuration = 60 / tempo; // seconds per beat
+
+  notes.forEach((note, index) => {
+    const startTime = audioContext!.currentTime + index * beatDuration;
+    const duration = beatDuration * 0.8; // 80% of beat duration
+
+    playNote(note, startTime, duration);
+  });
+}
+
+// Play a single note
+function playNote(noteName: string, startTime: number, duration: number) {
+  if (!audioContext) return;
+
+  const frequency = getNoteFrequency(noteName);
+
+  oscillator = audioContext.createOscillator();
+  gainNode = audioContext.createGain();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  oscillator.type = "sine";
+
+  gainNode.gain.setValueAtTime(0, startTime);
+  gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
+}
+
+// Get frequency for a note name
+function getNoteFrequency(noteName: string): number {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const note = noteName.replace(/\d/g, "");
+  const octave = parseInt(noteName.replace(/\D/g, "")) || 4;
+
+  const noteIndex = noteNames.indexOf(note);
+  if (noteIndex === -1) return 440;
+
+  // A4 = 440Hz, calculate relative frequency
+  const semitonesFromA4 = noteIndex - 9 + (octave - 4) * 12;
+  return 440 * Math.pow(2, semitonesFromA4 / 12);
+}
+
+// Get note name from pitch
+function getNoteName(pitch: number): string {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const octave = Math.floor(pitch / 12) - 1;
+  const idx = pitch % 12;
+  return `${noteNames[idx]}${octave}`;
+}
+
+// Update UI state
+function updateUI() {
+  generateBtn.disabled = !isTrained;
+  playBtn.disabled = !isTrained || !currentSequence.length;
+  stopBtn.disabled = true;
+}
+
+// Update transitions display
+function updateTransitions(sequences: string[][]) {
+  if (!transitionsEl) return;
+
+  try {
+    // Create a simple transition map from the training sequences
+    const transitions = new Map<string, Map<string, number>>();
+
+    // For order 2, we look at pairs of notes
+    const order = 2;
+
+    for (const sequence of sequences) {
+      for (let i = 0; i <= sequence.length - order; i++) {
+        const context = sequence.slice(i, i + order).join(" ");
+        const nextNote = sequence[i + order];
+
+        if (nextNote) {
+          if (!transitions.has(context)) {
+            transitions.set(context, new Map());
+          }
+
+          const contextTransitions = transitions.get(context)!;
+          contextTransitions.set(nextNote, (contextTransitions.get(nextNote) || 0) + 1);
+        }
+      }
+    }
+
+    // Display the transitions
+    if (transitions.size === 0) {
+      transitionsEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px">No transitions found</div>';
+      return;
+    }
+
+    const transitionItems = Array.from(transitions.entries())
+      .slice(0, 15) // Limit to first 15 for display
+      .map(([context, nextNotes]) => {
+        const total = Array.from(nextNotes.values()).reduce((sum, count) => sum + count, 0);
+        const topNext = Array.from(nextNotes.entries())
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3)
+          .map(([note, count]) => `${note} (${Math.round((count / total) * 100)}%)`)
+          .join(", ");
+
+        return `
+          <div class="transition-item">
+            <div class="transition-from">${context}</div>
+            <div class="transition-arrow">→</div>
+            <div class="transition-to">${topNext}</div>
+          </div>
+        `;
+      });
+
+    transitionsEl.innerHTML = transitionItems.join("");
+  } catch (error) {
+    transitionsEl.innerHTML =
+      '<div style="color: #6c757d; text-align: center; padding: 20px">Error displaying transitions</div>';
   }
 }
 
-// Event listeners
-trainBtn.addEventListener("click", trainChain);
-generateBtn.addEventListener("click", generateSequence);
-playBtn.addEventListener("click", playSequence);
-stopBtn.addEventListener("click", stopSequence);
-
-// Initialize with some example data
-trainingDataEl.value = `C4 D4 E4 F4 G4 A4 B4 C5
-G3 A3 B3 C4 D4 E4 F#4 G4
-F3 G3 A3 Bb3 C4 D4 E4 F4
-C4 E4 G4 B4 C5 A4 F4 D4
-D4 F#4 A4 C5 B4 G4 E4 C4`;
-
-// Initial state
-log(
-  "🎵 Markov Chain Music Generator Ready!\n\n1. Review the example training data above\n2. Click 'Train Markov Chain' to learn the patterns\n3. Click 'Generate New Sequence' to create new music\n4. Click 'Play Sequence' to hear your creation!\n\nTry adding your own sequences to the training data!"
-);
+// Initialize
+updateUI();
