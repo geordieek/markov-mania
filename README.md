@@ -74,6 +74,7 @@ const config: MarkovConfig = {
   order: 2, // Consider 2 previous musical elements
   smoothing: 0.1, // Probability smoothing factor
   maxLength: 32, // Maximum sequence length
+  temperature: 1.0, // Generation randomness (0.1-2.0)
 };
 ```
 
@@ -84,25 +85,70 @@ const config: MarkovConfig = {
 #### `MarkovChain`
 
 - `train(sequences: string[][]): void` - Train with data
-- `generate(startContext?: string[]): string[]` - Generate sequences
+- `generate(length: number, startContext?: string[]): string[]` - Generate sequences
 - `getStats(): Stats` - Get chain statistics
+- `getTransitionAnalysis(): TransitionAnalysis` - Get detailed transition analysis
+- `setTemperature(temperature: number): void` - Set generation randomness
+- `reset(): void` - Clear training data and reset chain
 
 #### `MusicMarkovChain`
 
 - `trainWithMusic(notes, rhythms): void` - Train with musical data
+- `trainWithMusicAppend(notes, rhythms): void` - Append to existing training
+- `appendMelodySequence(melody): void` - Append only melody tokens
 - `generateSequence(length: number): MusicSequence` - Generate musical sequence
 - `setKey(key: string): void` - Set musical key
 - `setTempo(tempo: number): void` - Set tempo
+- `setTemperature(temperature: number): void` - Set generation randomness
+- `setSamplingConstraints(opts): void` - Set repetition and sampling constraints
+- `setMaxCorpusSize(maxSize: number | null): void` - Limit training data size
+- `resetAll(): void` - Reset all internal chains
+- `setPitchRange(minPitch: number, maxPitch: number): void` - Set MIDI pitch range
+- `getMusicStats(): MusicStats` - Get statistics from all chains
 
 #### `MIDIGenerator`
 
-- `generateMIDI(musicSequence: MusicSequence, personality: string = "melodic"): MIDISequence` - Generate MIDI sequence
+- `generateMIDI(musicSequence: MusicSequence): MIDISequence` - Generate MIDI sequence
 - `generateMIDIFile(midiSequence: MIDISequence): Uint8Array` - Generate MIDI file
 - `setTempo(tempo: number): void` - Set tempo
 - `setTimeSignature(timeSignature: string): void` - Set time signature
 - `setKeySignature(keySignature: string): void` - Set key signature
 
-## 🤝 Acknowledgments
+## Types
+
+### Core Types
+
+```typescript
+interface MarkovConfig {
+  order: number; // Markov chain order
+  smoothing: number; // Probability smoothing
+  maxLength?: number; // Maximum sequence length
+  temperature?: number; // Generation randomness (0.1-2.0)
+}
+
+interface Note {
+  pitch: number; // MIDI note number (0-127)
+  velocity: number; // Note velocity (0-127)
+  duration: number; // Duration in milliseconds
+  startTime: number; // Start time in milliseconds
+  channel?: number; // MIDI channel (0-15)
+}
+
+interface MusicSequence {
+  notes: Note[]; // Array of notes
+  duration: number; // Total duration
+  key?: string; // Musical key
+  timeSignature?: string; // Time signature
+}
+
+interface RhythmPattern {
+  id: string; // Pattern identifier
+  beats: number[]; // Beat positions (0.0-1.0)
+  length: number; // Pattern length in beats
+}
+```
+
+## Acknowledgments
 
 The following projects were used as learning material or references:
 
