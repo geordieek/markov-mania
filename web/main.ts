@@ -15,17 +15,11 @@ const analysisEl = document.getElementById("analysis") as HTMLDivElement;
 const orderEl = document.getElementById("order") as HTMLSelectElement;
 
 // Markov chain instance
-const config: MarkovConfig = { order: 2, smoothing: 0.1, maxLength: 64, temperature: 1.0 };
+const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
 const musicChain = new MusicMarkovChain(config);
 
-// Update config when sequence length changes
-sequenceLengthEl.addEventListener("change", () => {
-  const newLength = parseInt(sequenceLengthEl.value);
-  if (newLength && newLength > 0) {
-    config.maxLength = newLength;
-    console.log("Updated maxLength to:", config.maxLength);
-  }
-});
+// Note: Sequence length is now passed directly to generateSequence()
+// No need to store it in config
 
 // Update config when smoothing changes
 const smoothingEl = document.getElementById("smoothing") as HTMLInputElement;

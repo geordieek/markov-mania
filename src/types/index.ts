@@ -46,8 +46,8 @@ export interface MarkovConfig {
   order: number;
   /** Smoothing factor for probability calculations */
   smoothing: number;
-  /** Maximum sequence length to generate */
-  maxLength: number;
+  /** Maximum sequence length to generate (optional, defaults to 64) */
+  maxLength?: number;
   /** Temperature for generation (higher = more random, lower = more deterministic) */
   temperature?: number;
 }

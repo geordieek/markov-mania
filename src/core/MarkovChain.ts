@@ -85,20 +85,69 @@ export class MarkovChain {
    * This ensures we have a proper probability distribution
    */
   private normalizeProbabilities(): void {
+    // First, collect all possible next elements from the entire training data
+    const allPossibleElements = new Set<string>();
+    for (const state of this.states.values()) {
+      for (const element of state.transitions.keys()) {
+        allPossibleElements.add(element);
+      }
+    }
+
+    // Also collect all possible context elements (for order > 1)
+    const allContextElements = new Set<string>();
+    for (const stateKey of this.states.keys()) {
+      const contextParts = stateKey.split("|");
+      for (const part of contextParts) {
+        allContextElements.add(part);
+      }
+    }
+
+    // Create missing states for all possible contexts
+    const order = this.config.order;
+    if (order > 1) {
+      // Generate all possible context combinations
+      const allElements = Array.from(allContextElements);
+      for (let i = 0; i < allElements.length; i++) {
+        for (let j = 0; j < allElements.length; j++) {
+          const contextKey = `${allElements[i]}|${allElements[j]}`;
+          if (!this.states.has(contextKey)) {
+            console.log(`Creating missing state for context: "${contextKey}"`);
+            this.states.set(contextKey, {
+              id: contextKey,
+              transitions: new Map(),
+              visitCount: 0,
+            });
+          }
+        }
+      }
+    }
+
     for (const state of this.states.values()) {
       const totalTransitions = Array.from(state.transitions.values()).reduce(
         (sum, count) => sum + count,
         0
       );
 
-      // Apply smoothing to avoid zero probabilities
+      // Apply proper smoothing: ensure every possible element has some probability
       const smoothing = this.config.smoothing;
-      const numPossibleTransitions = state.transitions.size;
+      const numAllElements = allPossibleElements.size;
 
+      console.log(
+        `Smoothing state "${state.id}" with ${numAllElements} possible elements, smoothing=${smoothing}`
+      );
+
+      // Add smoothing to all possible elements, not just existing ones
+      for (const element of allPossibleElements) {
+        const existingCount = state.transitions.get(element) || 0;
+        const smoothedCount = existingCount + smoothing;
+        state.transitions.set(element, smoothedCount);
+        console.log(`  Element "${element}": ${existingCount} → ${smoothedCount}`);
+      }
+
+      // Now normalize to sum to 1.0
+      const smoothedTotal = totalTransitions + smoothing * numAllElements;
       for (const [nextElement, count] of state.transitions) {
-        const smoothedCount = count + smoothing;
-        const smoothedTotal = totalTransitions + smoothing * numPossibleTransitions;
-        const probability = smoothedCount / smoothedTotal;
+        const probability = count / smoothedTotal;
         state.transitions.set(nextElement, probability);
       }
     }
@@ -107,22 +156,37 @@ export class MarkovChain {
   /**
    * Generate a new sequence using the trained Markov chain
    *
+   * @param length Desired sequence length (defaults to maxLength)
    * @param startContext Optional starting context
    * @returns Generated sequence
    */
-  generate(startContext?: string[]): string[] {
+  generate(length: number, startContext?: string[]): string[] {
     const sequence: string[] = [];
+
+    if (!length || length <= 0) {
+      throw new Error("Length must be a positive number");
+    }
+
+    console.log(`MarkovChain.generate() called with length: ${length}`);
 
     // Initialize with start context or random state
     let currentContext = startContext || this.getRandomStartContext();
 
-    // Generate sequence up to max length
-    for (let i = 0; i < this.config.maxLength; i++) {
+    // Generate sequence up to requested length
+    for (let i = 0; i < length; i++) {
       const contextKey = currentContext.join("|");
-      const nextElement = this.selectNextElement(contextKey);
+      console.log(`Step ${i}: context="${contextKey}", sequence so far: [${sequence.join(", ")}]`);
+
+      let nextElement = this.selectNextElement(contextKey);
+      console.log(`Step ${i}: nextElement="${nextElement}"`);
 
       if (!nextElement) {
-        break; // No valid transition found
+        console.log(
+          `Step ${i}: No valid transition found for context "${contextKey}" - this shouldn't happen with proper smoothing!`
+        );
+        console.log(`Available states: ${Array.from(this.states.keys()).join(", ")}`);
+        console.log(`Stopping at length ${sequence.length} due to missing transition`);
+        break; // This indicates a bug in smoothing or training
       }
 
       sequence.push(nextElement);
@@ -130,6 +194,8 @@ export class MarkovChain {
       // Update context for next iteration
       currentContext = [...currentContext.slice(1), nextElement];
     }
+
+    console.log(`Final sequence length: ${sequence.length}, requested: ${length}`);
 
     return sequence;
   }
@@ -247,19 +313,42 @@ export class MarkovChain {
   private selectNextElement(contextKey: string): string | null {
     const state = this.states.get(contextKey);
     if (!state || state.transitions.size === 0) {
+      console.log(`selectNextElement: No state found for context "${contextKey}"`);
+      console.log(`Available states: ${Array.from(this.states.keys()).join(", ")}`);
       return null;
     }
 
+    console.log(
+      `selectNextElement: Found state for "${contextKey}" with ${state.transitions.size} transitions`
+    );
+    console.log(
+      `Transitions: ${Array.from(state.transitions.entries())
+        .map(([k, v]) => `${k}:${v.toFixed(3)}`)
+        .join(", ")}`
+    );
+
     // Apply temperature if set
     const transitions = this.applyTemperature(state.transitions);
+    console.log(
+      `After temperature (${this.config.temperature}): ${Array.from(transitions.entries())
+        .map(([k, v]) => `${k}:${v.toFixed(3)}`)
+        .join(", ")}`
+    );
 
     // Use weighted random selection based on probabilities
     const random = Math.random();
     let cumulativeProbability = 0;
+    console.log(`Random value: ${random.toFixed(3)}`);
 
     for (const [nextElement, probability] of transitions) {
       cumulativeProbability += probability;
+      console.log(
+        `  ${nextElement}: prob=${probability.toFixed(
+          3
+        )}, cumulative=${cumulativeProbability.toFixed(3)}`
+      );
       if (random <= cumulativeProbability) {
+        console.log(`  Selected: ${nextElement}`);
         return nextElement;
       }
     }

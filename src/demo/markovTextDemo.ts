@@ -40,7 +40,7 @@ function demonstrateTextGeneration(): void {
 
   console.log("\nGenerating new text sequences:");
   for (let i = 0; i < 3; i++) {
-    const generated = textChain.generate();
+    const generated = textChain.generate(12);
     console.log(`${i + 1}. "${generated.join(" ")}"`);
   }
 
