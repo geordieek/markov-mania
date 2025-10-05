@@ -201,6 +201,93 @@ export class MarkovChain {
   }
 
   /**
+   * Generate a sequence with detailed step-by-step information
+   */
+  generateWithSteps(
+    length: number,
+    startContext?: string[]
+  ): {
+    sequence: string[];
+    steps: Array<{
+      step: number;
+      context: string;
+      availableTransitions: Array<{ element: string; probability: number }>;
+      selectedElement: string;
+      randomValue: number;
+    }>;
+  } {
+    const sequence: string[] = [];
+    const steps: Array<{
+      step: number;
+      context: string;
+      availableTransitions: Array<{ element: string; probability: number }>;
+      selectedElement: string;
+      randomValue: number;
+    }> = [];
+
+    if (!length || length <= 0) {
+      throw new Error("Length must be a positive number");
+    }
+
+    // Initialize with start context or random state
+    let currentContext = startContext || this.getRandomStartContext();
+
+    // Generate sequence up to requested length
+    for (let i = 0; i < length; i++) {
+      const contextKey = currentContext.join("|");
+      const state = this.states.get(contextKey);
+
+      if (!state || state.transitions.size === 0) {
+        break;
+      }
+
+      // Apply temperature if set
+      const transitions = this.applyTemperature(state.transitions);
+
+      // Get available transitions for display
+      const availableTransitions = Array.from(transitions.entries()).map(
+        ([element, probability]) => ({
+          element,
+          probability,
+        })
+      );
+
+      // Use weighted random selection
+      const random = Math.random();
+      let cumulativeProbability = 0;
+      let selectedElement = "";
+
+      for (const [nextElement, probability] of transitions) {
+        cumulativeProbability += probability;
+        if (random <= cumulativeProbability) {
+          selectedElement = nextElement;
+          break;
+        }
+      }
+
+      // Fallback to first element
+      if (!selectedElement) {
+        selectedElement = Array.from(transitions.keys())[0] || "";
+      }
+
+      steps.push({
+        step: i + 1,
+        context: contextKey,
+        availableTransitions,
+        selectedElement,
+        randomValue: random,
+      });
+
+      sequence.push(selectedElement);
+
+      // Update context for next iteration
+      currentContext = [...currentContext.slice(1), selectedElement];
+    }
+
+    return { sequence, steps };
+  }
+
+  /**
    * Get statistics about the trained Markov chain
    * Useful for understanding the learned patterns
    */
@@ -358,9 +445,84 @@ export class MarkovChain {
   }
 
   /**
+   * Get a step-by-step breakdown of the learning process
+   */
+  getLearningBreakdown(): {
+    totalSequences: number;
+    totalTransitions: number;
+    learningSteps: Array<{
+      step: number;
+      description: string;
+      context: string;
+      nextElement: string;
+      currentCount: number;
+      newCount: number;
+    }>;
+    finalStates: Array<{
+      context: string;
+      transitions: Array<{ element: string; count: number; probability: number }>;
+    }>;
+  } {
+    const learningSteps: Array<{
+      step: number;
+      description: string;
+      context: string;
+      nextElement: string;
+      currentCount: number;
+      newCount: number;
+    }> = [];
+
+    let stepCount = 0;
+    let totalTransitions = 0;
+
+    // Replay the learning process
+    for (const sequence of this.trainingData) {
+      for (let i = 0; i <= sequence.length - this.config.order; i++) {
+        const currentContext = this.getContextKey(sequence, i);
+        const nextElement = sequence[i + this.config.order];
+
+        if (nextElement) {
+          stepCount++;
+          totalTransitions++;
+
+          // Get current state to show counts
+          const state = this.states.get(currentContext);
+          const currentCount = state?.transitions.get(nextElement) || 0;
+
+          learningSteps.push({
+            step: stepCount,
+            description: `Learning transition from context "${currentContext}" to "${nextElement}"`,
+            context: currentContext,
+            nextElement: nextElement,
+            currentCount: currentCount,
+            newCount: currentCount + 1,
+          });
+        }
+      }
+    }
+
+    // Get final states
+    const finalStates = Array.from(this.states.entries()).map(([context, state]) => ({
+      context,
+      transitions: Array.from(state.transitions.entries()).map(([element, probability]) => ({
+        element,
+        count: Math.round(probability * state.visitCount),
+        probability: probability,
+      })),
+    }));
+
+    return {
+      totalSequences: this.trainingData.length,
+      totalTransitions,
+      learningSteps,
+      finalStates,
+    };
+  }
+
+  /**
    * Get a random starting context from training data
    */
-  private getRandomStartContext(): string[] {
+  getRandomStartContext(): string[] {
     if (this.trainingData.length === 0) {
       throw new Error("No training data available");
     }
