@@ -4,6 +4,7 @@ import { AudioManager } from "./audioManager";
 import { MIDIParser } from "@src/input/MIDIParser";
 import { AutomataAnalysis } from "@src/analysis/AutomataAnalysis";
 import { EntropyAnalysis } from "@src/analysis/EntropyAnalysis";
+import { ComplexityAnalysis } from "@src/analysis/ComplexityAnalysis";
 
 // DOM elements
 const trainingDataEl = document.getElementById("trainingData") as HTMLTextAreaElement;
@@ -26,6 +27,7 @@ const musicChain = new MusicMarkovChain(config);
 // Analysis instances
 const automataAnalysis = new AutomataAnalysis();
 const entropyAnalysis = new EntropyAnalysis();
+const complexityAnalysis = new ComplexityAnalysis();
 const midiParser = new MIDIParser();
 
 // Note: Sequence length is now passed directly to generateSequence()
@@ -594,6 +596,7 @@ function updateAnalysis() {
     // Analysis
     const automataMetrics = automataAnalysis.getDeterminismMetrics(musicChain as any);
     const entropyMetrics = entropyAnalysis.getEntropyMetrics(musicChain as any);
+    const complexityMetrics = complexityAnalysis.analyzeBottlenecks(musicChain as any);
 
     // Display statistics
     statsEl.innerHTML = `
@@ -613,6 +616,8 @@ function updateAnalysis() {
       <strong>Probabilistic States:</strong> ${automataMetrics.probabilisticStates}<br>
       <strong>State Complexity:</strong> ${automataMetrics.stateComplexity.toFixed(2)}<br>
       <strong>Novelty Score:</strong> ${(entropyMetrics.noveltyScore * 100).toFixed(1)}%<br>
+      <strong>Bottleneck:</strong> ${complexityMetrics.bottleneck}<br>
+      <strong>Recommendation:</strong> ${complexityMetrics.recommendation}
     `;
   } catch (error) {
     statsEl.innerHTML = "Error getting statistics";
