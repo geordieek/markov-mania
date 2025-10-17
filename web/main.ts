@@ -1,6 +1,8 @@
 import { MusicMarkovChain } from "@src/music/MusicMarkovChain";
 import type { MarkovConfig } from "@src/types";
 import { AudioManager } from "./audioManager";
+import { MIDIParser } from "@src/input/MIDIParser";
+import { AutomataAnalysis } from "@src/analysis/AutomataAnalysis";
 
 // DOM elements
 const trainingDataEl = document.getElementById("trainingData") as HTMLTextAreaElement;
@@ -19,6 +21,10 @@ const orderEl = document.getElementById("order") as HTMLSelectElement;
 // Markov chain instance
 const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
 const musicChain = new MusicMarkovChain(config);
+
+// Analysis instances
+const automataAnalysis = new AutomataAnalysis();
+const midiParser = new MIDIParser();
 
 // Note: Sequence length is now passed directly to generateSequence()
 // No need to store it in config
@@ -297,6 +303,103 @@ playTrainingBtn.addEventListener("click", async () => {
   }
 });
 
+// MIDI import functionality
+const importMIDIBtn = document.getElementById("importMIDI") as HTMLButtonElement;
+const midiImportArea = document.getElementById("midiImportArea") as HTMLDivElement;
+const midiFileInput = document.getElementById("midiFileInput") as HTMLInputElement;
+const openPianoRollBtn = document.getElementById("openPianoRoll") as HTMLButtonElement;
+
+importMIDIBtn.addEventListener("click", () => {
+  midiImportArea.style.display = midiImportArea.style.display === "none" ? "block" : "none";
+});
+
+openPianoRollBtn.addEventListener("click", () => {
+  window.open("piano-roll.html", "_blank");
+});
+
+// MIDI file input handler
+midiFileInput.addEventListener("change", async (event) => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (file) {
+    await handleMIDIImport(file);
+  }
+});
+
+// Drag and drop for MIDI files
+midiImportArea.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  midiImportArea.style.backgroundColor = "#e3f2fd";
+});
+
+midiImportArea.addEventListener("dragleave", () => {
+  midiImportArea.style.backgroundColor = "";
+});
+
+midiImportArea.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  midiImportArea.style.backgroundColor = "";
+
+  const files = event.dataTransfer?.files;
+  if (files && files.length > 0) {
+    const file = files[0];
+    if (file.name.toLowerCase().endsWith(".mid") || file.name.toLowerCase().endsWith(".midi")) {
+      await handleMIDIImport(file);
+    } else {
+      outputEl.textContent = "Please select a MIDI file (.mid or .midi)";
+    }
+  }
+});
+
+// Click to select file
+midiImportArea.addEventListener("click", () => {
+  midiFileInput.click();
+});
+
+async function handleMIDIImport(file: File): Promise<void> {
+  try {
+    outputEl.textContent = `Importing MIDI file: ${file.name}...`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const parsedMIDI = await midiParser.parseMIDIFile(arrayBuffer);
+
+    // Extract sequences
+    const noteSequences = midiParser.extractNoteSequences(parsedMIDI);
+    const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+
+    // Convert to training data format
+    const trainingData = [];
+    for (let i = 0; i < noteSequences.length; i++) {
+      const noteSequence = noteSequences[i];
+      const rhythmSequence = rhythmSequences[i] || [];
+
+      const combined = noteSequence
+        .map((note, j) => `${note}:${rhythmSequence[j] || "4"}`)
+        .join(" ");
+
+      trainingData.push(combined);
+    }
+
+    // Update training data textarea
+    trainingDataEl.value = trainingData.join("\n");
+
+    // Show MIDI stats
+    const stats = midiParser.getMIDIStats(parsedMIDI);
+    outputEl.textContent =
+      `MIDI imported successfully!\n\n` +
+      `Tracks: ${stats.totalTracks}\n` +
+      `Total Notes: ${stats.totalNotes}\n` +
+      `Duration: ${(stats.duration / 1000).toFixed(1)}s\n` +
+      `Tempo: ${stats.tempo} BPM\n` +
+      `Key: ${stats.keySignature}\n\n` +
+      `Click "Train Markov Chain" to learn from this data.`;
+
+    // Hide import area
+    midiImportArea.style.display = "none";
+  } catch (error) {
+    outputEl.textContent = `Error importing MIDI file: ${error}`;
+  }
+}
+
 // Get note name from pitch
 function getNoteName(pitch: number): string {
   const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -485,7 +588,9 @@ function updateAnalysis() {
 
   try {
     const musicStats = musicChain.getMusicStats();
-    const noteAnalysis = (musicChain as any).noteChain.getTransitionAnalysis();
+
+    // Analysis
+    const automataMetrics = automataAnalysis.getDeterminismMetrics(musicChain as any);
 
     // Display statistics
     statsEl.innerHTML = `
@@ -493,14 +598,15 @@ function updateAnalysis() {
       <strong>Rhythm States:</strong> ${musicStats.rhythmStats.totalStates}<br>
       <strong>Avg Transitions:</strong> ${musicStats.noteStats.averageTransitionsPerState.toFixed(
         2
-      )}
+      )}<br>
+      <strong>Determinism Index:</strong> ${automataMetrics.determinismIndex.toFixed(3)}<br>
     `;
 
     // Display transition analysis
     analysisEl.innerHTML = `
-      <strong>Deterministic:</strong> ${noteAnalysis.deterministicStates}<br>
-      <strong>Probabilistic:</strong> ${noteAnalysis.probabilisticStates}<br>
-      <strong>Variation:</strong> ${noteAnalysis.probabilisticStates > 0 ? "Good" : "Limited"}
+      <strong>Deterministic States:</strong> ${automataMetrics.deterministicStates}<br>
+      <strong>Probabilistic States:</strong> ${automataMetrics.probabilisticStates}<br>
+      <strong>State Complexity:</strong> ${automataMetrics.stateComplexity.toFixed(2)}<br>
     `;
   } catch (error) {
     statsEl.innerHTML = "Error getting statistics";

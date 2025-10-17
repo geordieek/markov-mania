@@ -5,8 +5,13 @@
 // Core Libraries
 export { MarkovChain } from "./core/MarkovChain";
 export { MusicMarkovChain } from "./music/MusicMarkovChain";
-// TODO: Below not currently integrated, will be for future M4L integration
 export { MIDIGenerator } from "./music/MIDIGenerator";
+
+// Input/Output
+export { MIDIParser } from "./input/MIDIParser";
+
+// Analysis Modules
+export { AutomataAnalysis } from "./analysis/AutomataAnalysis";
 
 // Types
 export * from "./types";
