@@ -3,6 +3,7 @@ import type { MarkovConfig } from "@src/types";
 import { AudioManager } from "./audioManager";
 import { MIDIParser } from "@src/input/MIDIParser";
 import { AutomataAnalysis } from "@src/analysis/AutomataAnalysis";
+import { EntropyAnalysis } from "@src/analysis/EntropyAnalysis";
 
 // DOM elements
 const trainingDataEl = document.getElementById("trainingData") as HTMLTextAreaElement;
@@ -24,6 +25,7 @@ const musicChain = new MusicMarkovChain(config);
 
 // Analysis instances
 const automataAnalysis = new AutomataAnalysis();
+const entropyAnalysis = new EntropyAnalysis();
 const midiParser = new MIDIParser();
 
 // Note: Sequence length is now passed directly to generateSequence()
@@ -591,6 +593,7 @@ function updateAnalysis() {
 
     // Analysis
     const automataMetrics = automataAnalysis.getDeterminismMetrics(musicChain as any);
+    const entropyMetrics = entropyAnalysis.getEntropyMetrics(musicChain as any);
 
     // Display statistics
     statsEl.innerHTML = `
@@ -600,6 +603,8 @@ function updateAnalysis() {
         2
       )}<br>
       <strong>Determinism Index:</strong> ${automataMetrics.determinismIndex.toFixed(3)}<br>
+      <strong>Chain Entropy:</strong> ${entropyMetrics.chainEntropy.toFixed(3)}<br>
+      <strong>Predictability:</strong> ${(entropyMetrics.predictability * 100).toFixed(1)}%
     `;
 
     // Display transition analysis
@@ -607,6 +612,7 @@ function updateAnalysis() {
       <strong>Deterministic States:</strong> ${automataMetrics.deterministicStates}<br>
       <strong>Probabilistic States:</strong> ${automataMetrics.probabilisticStates}<br>
       <strong>State Complexity:</strong> ${automataMetrics.stateComplexity.toFixed(2)}<br>
+      <strong>Novelty Score:</strong> ${(entropyMetrics.noveltyScore * 100).toFixed(1)}%<br>
     `;
   } catch (error) {
     statsEl.innerHTML = "Error getting statistics";

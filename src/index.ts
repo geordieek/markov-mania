@@ -12,6 +12,7 @@ export { MIDIParser } from "./input/MIDIParser";
 
 // Analysis Modules
 export { AutomataAnalysis } from "./analysis/AutomataAnalysis";
+export { EntropyAnalysis } from "./analysis/EntropyAnalysis";
 
 // Types
 export * from "./types";
