@@ -6,10 +6,12 @@
 
 import { MarkovChain } from "../core/MarkovChain";
 import { MarkovConfig, MusicSequence, Note } from "../types";
+import { HarmonicAnalyzer, ChordProgression } from "./HarmonicAnalyzer";
 
 export class MusicMarkovChain extends MarkovChain {
   private noteChain: MarkovChain;
   private rhythmChain: MarkovChain;
+  private harmonicAnalyzer: HarmonicAnalyzer;
 
   // Musical constraints and scales
   private musicalKey: string = "C";
@@ -18,12 +20,19 @@ export class MusicMarkovChain extends MarkovChain {
   private minPitch: number = 24; // C2 TODO: Allow this to be set, or use in the input value to help infer it
   private maxPitch: number = 84; // C6 TODO: Allow this to be set, or use in the input value to help infer it
 
+  // Harmonic awareness
+  private harmonicMode: boolean = false;
+  private currentChordProgression: ChordProgression | null = null;
+
   constructor(config: MarkovConfig) {
     super(config);
 
     // Create specialized chains for different musical aspects
     this.noteChain = new MarkovChain(config);
     this.rhythmChain = new MarkovChain(config);
+
+    // Initialize analyzers
+    this.harmonicAnalyzer = new HarmonicAnalyzer();
   }
 
   /**
@@ -32,13 +41,16 @@ export class MusicMarkovChain extends MarkovChain {
   trainWithMusic(noteSequences: string[][], rhythmPatterns: string[][]): void {
     this.noteChain.train(noteSequences);
     this.rhythmChain.train(rhythmPatterns);
+
+    // Learn harmonic patterns from the training data
+    this.learnHarmonicPatterns(noteSequences);
   }
 
   /**
    * Append only melody tokens to the melodic chain
    */
   appendMelodySequence(melody: string[]): void {
-    (this.noteChain as any).trainAppend?.([melody]);
+    this.noteChain.trainAppend([melody]);
   }
 
   /**
@@ -47,14 +59,28 @@ export class MusicMarkovChain extends MarkovChain {
   generateSequence(sequenceLength: number = 16): MusicSequence {
     console.log(`MusicMarkovChain.generateSequence() called with length: ${sequenceLength}`);
 
+    // Generate chord progression if in harmonic mode
+    if (this.harmonicMode && !this.currentChordProgression) {
+      this.currentChordProgression = this.harmonicAnalyzer.generateChordProgression(
+        this.musicalKey,
+        Math.ceil(sequenceLength / 4)
+      );
+    }
+
     // Generate different musical layers
     const melody = this.generateMelody(sequenceLength);
     const rhythm = this.generateRhythm(sequenceLength);
 
     console.log(`Generated melody length: ${melody.length}, rhythm: ${rhythm.length}`);
 
+    // Apply harmonic constraints if enabled
+    const harmonicallyConstrainedMelody =
+      this.harmonicMode && this.currentChordProgression
+        ? this.harmonicAnalyzer.constrainToChordProgression(melody, this.currentChordProgression)
+        : melody;
+
     // Combine them into a coherent musical sequence
-    return this.combineMusicalLayers(melody, rhythm);
+    return this.combineMusicalLayers(harmonicallyConstrainedMelody, rhythm);
   }
 
   /**
@@ -281,16 +307,16 @@ export class MusicMarkovChain extends MarkovChain {
    */
   setTemperature(temperature: number): void {
     // Forward to internal chains
-    (this.noteChain as any).setTemperature?.(temperature);
-    (this.rhythmChain as any).setTemperature?.(temperature);
+    this.noteChain.setTemperature(temperature);
+    this.rhythmChain.setTemperature(temperature);
   }
 
   /**
    * Reset all internal chains and base chain
    */
   resetAll(): void {
-    (this.noteChain as any).reset?.();
-    (this.rhythmChain as any).reset?.();
+    this.noteChain.reset();
+    this.rhythmChain.reset();
     super.reset();
   }
 
@@ -313,5 +339,64 @@ export class MusicMarkovChain extends MarkovChain {
       noteStats: this.noteChain.getStats(),
       rhythmStats: this.rhythmChain.getStats(),
     };
+  }
+
+  /**
+   * Learn harmonic patterns from training sequences
+   */
+  private learnHarmonicPatterns(noteSequences: string[][]): void {
+    // Convert string sequences to Note objects for harmonic analysis
+    const noteSequencesAsNotes = noteSequences.map((sequence) =>
+      sequence.map((noteStr, index) => {
+        const parsed = this.parseNote(noteStr);
+        const pitch = parsed ? parsed.pitch : 60; // Default to middle C
+        return {
+          pitch: pitch,
+          startTime: index * 500,
+          duration: 500,
+          velocity: 80,
+        };
+      })
+    );
+
+    // Learn harmonic patterns
+    this.harmonicAnalyzer.learnHarmonicPatterns(noteSequences);
+
+    // Detect key from training data
+    const allNotes = noteSequencesAsNotes.flat();
+    this.musicalKey = this.harmonicAnalyzer.detectKey(allNotes);
+    this.updateScale(this.musicalKey);
+  }
+
+  /**
+   * Get current chord progression
+   */
+  getCurrentChordProgression(): ChordProgression | null {
+    return this.currentChordProgression;
+  }
+
+  /**
+   * Get harmonic statistics
+   */
+  getHarmonicStats(): any {
+    if (!this.currentChordProgression) {
+      return null;
+    }
+
+    return this.harmonicAnalyzer.calculateHarmonicStats([this.currentChordProgression]);
+  }
+
+  /**
+   * Get the note chain for analysis purposes
+   */
+  public getNoteChain(): MarkovChain {
+    return this.noteChain;
+  }
+
+  /**
+   * Get the rhythm chain for analysis purposes
+   */
+  public getRhythmChain(): MarkovChain {
+    return this.rhythmChain;
   }
 }

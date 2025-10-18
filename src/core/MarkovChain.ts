@@ -8,12 +8,16 @@
 import { MarkovState, MarkovConfig } from "../types";
 
 export class MarkovChain {
-  private states: Map<string, MarkovState> = new Map();
-  private config: MarkovConfig;
-  private trainingData: string[][] = [];
+  protected states: Map<string, MarkovState> = new Map();
+  protected config: MarkovConfig;
+  protected trainingData: string[][] = [];
 
   constructor(config: MarkovConfig) {
     this.config = config;
+  }
+
+  getConfig(): MarkovConfig {
+    return this.config;
   }
 
   /**
@@ -31,6 +35,25 @@ export class MarkovChain {
     }
 
     // Normalize probabilities
+    this.normalizeProbabilities();
+  }
+
+  /**
+   * Append additional training data to an already trained chain
+   * This allows for incremental learning without retraining from scratch
+   *
+   * @param sequences Array of additional musical sequences to append
+   */
+  trainAppend(sequences: string[][]): void {
+    // Add new sequences to existing training data
+    this.trainingData.push(...sequences);
+
+    // Process each new sequence to update state transitions
+    for (const sequence of sequences) {
+      this.processSequence(sequence);
+    }
+
+    // Renormalize probabilities to account for new data
     this.normalizeProbabilities();
   }
 
@@ -76,7 +99,8 @@ export class MarkovChain {
 
     // Update transition count
     const currentCount = currentState.transitions.get(nextElement) || 0;
-    currentState.transitions.set(nextElement, currentCount + 1);
+    const newCount = currentCount + 1;
+    currentState.transitions.set(nextElement, newCount);
     currentState.visitCount++;
   }
 
@@ -85,42 +109,8 @@ export class MarkovChain {
    * This ensures we have a proper probability distribution
    */
   private normalizeProbabilities(): void {
-    // First, collect all possible next elements from the entire training data
-    const allPossibleElements = new Set<string>();
-    for (const state of this.states.values()) {
-      for (const element of state.transitions.keys()) {
-        allPossibleElements.add(element);
-      }
-    }
-
-    // Also collect all possible context elements (for order > 1)
-    const allContextElements = new Set<string>();
-    for (const stateKey of this.states.keys()) {
-      const contextParts = stateKey.split("|");
-      for (const part of contextParts) {
-        allContextElements.add(part);
-      }
-    }
-
-    // Create missing states for all possible contexts
-    const order = this.config.order;
-    if (order > 1) {
-      // Generate all possible context combinations
-      const allElements = Array.from(allContextElements);
-      for (let i = 0; i < allElements.length; i++) {
-        for (let j = 0; j < allElements.length; j++) {
-          const contextKey = `${allElements[i]}|${allElements[j]}`;
-          if (!this.states.has(contextKey)) {
-            console.log(`Creating missing state for context: "${contextKey}"`);
-            this.states.set(contextKey, {
-              id: contextKey,
-              transitions: new Map(),
-              visitCount: 0,
-            });
-          }
-        }
-      }
-    }
+    // Don't create missing states - only work with states that actually exist
+    // This prevents the explosion of states that causes performance issues
 
     for (const state of this.states.values()) {
       const totalTransitions = Array.from(state.transitions.values()).reduce(
@@ -128,24 +118,18 @@ export class MarkovChain {
         0
       );
 
-      // Apply proper smoothing: ensure every possible element has some probability
+      // Apply smoothing only to elements that actually exist in this state's transitions
       const smoothing = this.config.smoothing;
-      const numAllElements = allPossibleElements.size;
+      const numElements = state.transitions.size;
 
-      console.log(
-        `Smoothing state "${state.id}" with ${numAllElements} possible elements, smoothing=${smoothing}`
-      );
-
-      // Add smoothing to all possible elements, not just existing ones
-      for (const element of allPossibleElements) {
-        const existingCount = state.transitions.get(element) || 0;
-        const smoothedCount = existingCount + smoothing;
+      // Add smoothing only to elements that already exist in this state
+      for (const [element, count] of state.transitions) {
+        const smoothedCount = count + smoothing;
         state.transitions.set(element, smoothedCount);
-        console.log(`  Element "${element}": ${existingCount} → ${smoothedCount}`);
       }
 
       // Now normalize to sum to 1.0
-      const smoothedTotal = totalTransitions + smoothing * numAllElements;
+      const smoothedTotal = totalTransitions + smoothing * numElements;
       for (const [nextElement, count] of state.transitions) {
         const probability = count / smoothedTotal;
         state.transitions.set(nextElement, probability);
@@ -161,43 +145,8 @@ export class MarkovChain {
    * @returns Generated sequence
    */
   generate(length: number, startContext?: string[]): string[] {
-    const sequence: string[] = [];
-
-    if (!length || length <= 0) {
-      throw new Error("Length must be a positive number");
-    }
-
-    console.log(`MarkovChain.generate() called with length: ${length}`);
-
-    // Initialize with start context or random state
-    let currentContext = startContext || this.getRandomStartContext();
-
-    // Generate sequence up to requested length
-    for (let i = 0; i < length; i++) {
-      const contextKey = currentContext.join("|");
-      console.log(`Step ${i}: context="${contextKey}", sequence so far: [${sequence.join(", ")}]`);
-
-      let nextElement = this.selectNextElement(contextKey);
-      console.log(`Step ${i}: nextElement="${nextElement}"`);
-
-      if (!nextElement) {
-        console.log(
-          `Step ${i}: No valid transition found for context "${contextKey}" - this shouldn't happen with proper smoothing!`
-        );
-        console.log(`Available states: ${Array.from(this.states.keys()).join(", ")}`);
-        console.log(`Stopping at length ${sequence.length} due to missing transition`);
-        break; // This indicates a bug in smoothing or training
-      }
-
-      sequence.push(nextElement);
-
-      // Update context for next iteration
-      currentContext = [...currentContext.slice(1), nextElement];
-    }
-
-    console.log(`Final sequence length: ${sequence.length}, requested: ${length}`);
-
-    return sequence;
+    const result = this.generateWithSteps(length, startContext);
+    return result.sequence;
   }
 
   /**
@@ -238,7 +187,51 @@ export class MarkovChain {
       const state = this.states.get(contextKey);
 
       if (!state || state.transitions.size === 0) {
-        break;
+        // Try to find a fallback state or use a random element from all possible elements
+        const fallbackState = this.findFallbackState(currentContext);
+        if (!fallbackState) {
+          break;
+        }
+        // Use the fallback state for this iteration
+        const transitions = this.applyTemperature(fallbackState.transitions);
+
+        // Get available transitions for display
+        const availableTransitions = Array.from(transitions.entries()).map(
+          ([element, probability]) => ({
+            element,
+            probability,
+          })
+        );
+
+        // Use weighted random selection
+        const random = Math.random();
+        let cumulativeProbability = 0;
+        let selectedElement = "";
+
+        for (const [nextElement, probability] of transitions) {
+          cumulativeProbability += probability;
+          if (random <= cumulativeProbability) {
+            selectedElement = nextElement;
+            break;
+          }
+        }
+
+        if (selectedElement) {
+          sequence.push(selectedElement);
+          steps.push({
+            step: i,
+            context: contextKey,
+            availableTransitions,
+            selectedElement,
+            randomValue: random,
+          });
+
+          // Update context for next iteration
+          currentContext = [...currentContext.slice(1), selectedElement];
+        } else {
+          break;
+        }
+        continue;
       }
 
       // Apply temperature if set
@@ -305,8 +298,39 @@ export class MarkovChain {
     return {
       totalStates: this.states.size,
       totalTransitions,
-      averageTransitionsPerState: totalTransitions / this.states.size,
+      averageTransitionsPerState: this.states.size > 0 ? totalTransitions / this.states.size : 0,
     };
+  }
+
+  /**
+   * Get all states for analysis purposes
+   */
+  getStates(): MarkovState[] {
+    return Array.from(this.states.values());
+  }
+
+  /**
+   * Find a fallback state when the current context doesn't exist
+   */
+  private findFallbackState(context: string[]): MarkovState | null {
+    // Try to find a state with a similar context (shorter context)
+    for (let i = context.length - 1; i > 0; i--) {
+      const shorterContext = context.slice(-i);
+      const contextKey = shorterContext.join("|");
+      const state = this.states.get(contextKey);
+      if (state && state.transitions.size > 0) {
+        return state;
+      }
+    }
+
+    // If no shorter context works, try to find any state with transitions
+    for (const state of this.states.values()) {
+      if (state.transitions.size > 0) {
+        return state;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -397,7 +421,7 @@ export class MarkovChain {
    * Select the next element based on current context and transition probabilities
    * This implements the probabilistic nature of the Markov chain
    */
-  private selectNextElement(contextKey: string): string | null {
+  protected selectNextElement(contextKey: string): string | null {
     const state = this.states.get(contextKey);
     if (!state || state.transitions.size === 0) {
       console.log(`selectNextElement: No state found for context "${contextKey}"`);
