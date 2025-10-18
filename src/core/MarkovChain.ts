@@ -109,16 +109,13 @@ export class MarkovChain {
    * This ensures we have a proper probability distribution
    */
   private normalizeProbabilities(): void {
-    // Don't create missing states - only work with states that actually exist
-    // This prevents the explosion of states that causes performance issues
-
     for (const state of this.states.values()) {
       const totalTransitions = Array.from(state.transitions.values()).reduce(
         (sum, count) => sum + count,
         0
       );
 
-      // Apply smoothing only to elements that actually exist in this state's transitions
+      // Apply smoothing
       const smoothing = this.config.smoothing;
       const numElements = state.transitions.size;
 

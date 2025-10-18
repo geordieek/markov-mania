@@ -22,7 +22,7 @@ const orderEl = document.getElementById("order") as HTMLSelectElement;
 
 // Markov chain instance
 const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
-const musicChain = new MusicMarkovChain(config);
+let musicChain = new MusicMarkovChain(config);
 
 // Analysis instances
 const automataAnalysis = new AutomataAnalysis();
@@ -158,13 +158,10 @@ trainBtn.addEventListener("click", () => {
     console.log("Parsed note sequences:", noteSequences);
     console.log("Parsed rhythm sequences:", rhythmSequences);
 
-    // Reset and train with current config
-    musicChain.resetAll?.();
+    // Rather than just 'resetting' the markov chain
+    // we'll create a completely new Markov chain instance with current config
     console.log("Training with config:", config);
-
-    // Create a new Markov chain instance with current config
-    const newChain = new MusicMarkovChain(config);
-    Object.assign(musicChain, newChain);
+    musicChain = new MusicMarkovChain(config);
 
     // Apply temperature and smoothing to the new chain
     (musicChain as any).noteChain.setTemperature?.(config.temperature || 1.0);
@@ -593,10 +590,59 @@ function updateAnalysis() {
   try {
     const musicStats = musicChain.getMusicStats();
 
-    // Analysis
-    const automataMetrics = automataAnalysis.getDeterminismMetrics(musicChain as any);
-    const entropyMetrics = entropyAnalysis.getEntropyMetrics(musicChain as any);
-    const complexityMetrics = complexityAnalysis.analyzeBottlenecks(musicChain as any);
+    const noteChain = musicChain.getNoteChain();
+
+    // Debug: Check if noteChain has states
+    console.log("Note chain states:", noteChain.getStates().length);
+    console.log("Note chain config:", noteChain.getConfig());
+
+    const automataMetrics = automataAnalysis.getDeterminismMetrics(noteChain);
+    const entropyMetrics = entropyAnalysis.getEntropyMetrics(noteChain);
+    const complexityMetrics = complexityAnalysis.analyzeBottlenecks(noteChain);
+
+    // Debug: Log the metrics and detailed state analysis
+    console.log("Automata metrics:", automataMetrics);
+    console.log("Entropy metrics:", entropyMetrics);
+    console.log("Complexity metrics:", complexityMetrics);
+
+    // Debug: Check actual entropy values
+    const states = noteChain.getStates();
+    console.log("=== DETAILED STATE ANALYSIS ===");
+    console.log(`Total states: ${states.length}`);
+
+    let entropyValues: number[] = [];
+    let deterministicCount = 0;
+    const entropyThreshold = 0.1;
+
+    for (let i = 0; i < Math.min(10, states.length); i++) {
+      const state = states[i];
+      const entropy = calculateStateEntropy(state.transitions);
+      entropyValues.push(entropy);
+
+      if (entropy < entropyThreshold) {
+        deterministicCount++;
+      }
+
+      console.log(
+        `State ${i}: "${state.id}" - Entropy: ${entropy.toFixed(3)}, Transitions: ${
+          state.transitions.size
+        }`
+      );
+      console.log(
+        `  Transitions:`,
+        Array.from(state.transitions.entries())
+          .slice(0, 5)
+          .map(([k, v]) => `${k}:${v.toFixed(3)}`)
+      );
+    }
+
+    const avgEntropy = entropyValues.reduce((sum, e) => sum + e, 0) / entropyValues.length;
+    console.log(`Average entropy (sample): ${avgEntropy.toFixed(3)}`);
+    console.log(
+      `Deterministic states (sample): ${deterministicCount}/${Math.min(10, states.length)}`
+    );
+    console.log(`Entropy threshold: ${entropyThreshold}`);
+    console.log("=== END DETAILED ANALYSIS ===");
 
     // Display statistics
     statsEl.innerHTML = `
@@ -623,6 +669,20 @@ function updateAnalysis() {
     statsEl.innerHTML = "Error getting statistics";
     analysisEl.innerHTML = "Error getting analysis";
   }
+}
+
+// Helper function to calculate state entropy
+function calculateStateEntropy(transitions: Map<string, number>): number {
+  if (transitions.size === 0) return 0;
+
+  let entropy = 0;
+  for (const probability of transitions.values()) {
+    if (probability > 0) {
+      entropy -= probability * Math.log2(probability);
+    }
+  }
+
+  return entropy;
 }
 
 // Initialize

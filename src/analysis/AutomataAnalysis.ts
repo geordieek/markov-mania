@@ -52,7 +52,7 @@ export interface DOTGraph {
 }
 
 export class AutomataAnalysis {
-  private entropyThreshold = 0.01; // Below this, consider state effectively deterministic
+  private entropyThreshold = 0.1; // TODO: Tweak this possibly? It's not a bad value, but it's not a good threshold to consider something deterministic..
 
   /**
    * Calculate the determinism index of a Markov chain (0-1)

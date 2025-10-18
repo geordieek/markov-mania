@@ -57,8 +57,6 @@ export class MusicMarkovChain extends MarkovChain {
    * Generate a complete musical sequence from the trained chains
    */
   generateSequence(sequenceLength: number = 16): MusicSequence {
-    console.log(`MusicMarkovChain.generateSequence() called with length: ${sequenceLength}`);
-
     // Generate chord progression if in harmonic mode
     if (this.harmonicMode && !this.currentChordProgression) {
       this.currentChordProgression = this.harmonicAnalyzer.generateChordProgression(
@@ -70,8 +68,6 @@ export class MusicMarkovChain extends MarkovChain {
     // Generate different musical layers
     const melody = this.generateMelody(sequenceLength);
     const rhythm = this.generateRhythm(sequenceLength);
-
-    console.log(`Generated melody length: ${melody.length}, rhythm: ${rhythm.length}`);
 
     // Apply harmonic constraints if enabled
     const harmonicallyConstrainedMelody =
@@ -87,10 +83,8 @@ export class MusicMarkovChain extends MarkovChain {
    * Generate a melodic sequence using the note Markov chain
    */
   private generateMelody(length: number): string[] {
-    console.log(`generateMelody() called with length: ${length}`);
     // Generate a sequence with the exact length requested
     const result = this.noteChain.generate(length);
-    console.log(`generateMelody() returned: ${result.length} notes`);
     return result;
   }
 
@@ -398,5 +392,12 @@ export class MusicMarkovChain extends MarkovChain {
    */
   public getRhythmChain(): MarkovChain {
     return this.rhythmChain;
+  }
+
+  /**
+   * Set harmonic mode for the music generation
+   */
+  public setHarmonicMode(enabled: boolean): void {
+    this.harmonicMode = enabled;
   }
 }
