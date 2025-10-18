@@ -15,6 +15,9 @@ export { AutomataAnalysis } from "./analysis/AutomataAnalysis";
 export { EntropyAnalysis } from "./analysis/EntropyAnalysis";
 export { ComplexityAnalysis } from "./analysis/ComplexityAnalysis";
 
+// Music Analysis
+export { HarmonicAnalyzer } from "./music/HarmonicAnalyzer";
+
 // Types
 export * from "./types";
 

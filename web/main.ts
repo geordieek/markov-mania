@@ -19,6 +19,7 @@ const transitionsEl = document.getElementById("transitions") as HTMLDivElement;
 const statsEl = document.getElementById("stats") as HTMLDivElement;
 const analysisEl = document.getElementById("analysis") as HTMLDivElement;
 const orderEl = document.getElementById("order") as HTMLSelectElement;
+const instrumentEl = document.getElementById("instrument") as HTMLSelectElement;
 
 // Markov chain instance
 const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
@@ -51,6 +52,11 @@ smoothingEl.addEventListener("input", () => {
     isTrained = false;
     currentSequence = [];
     updateUI();
+    // Clear analysis since we need to retrain
+    if (analysisEl) {
+      analysisEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px;">Analysis will appear after retraining</div>';
+    }
   }
 });
 
@@ -76,6 +82,8 @@ temperatureEl.addEventListener("input", () => {
     (musicChain as any).noteChain.setTemperature?.(newTemperature);
     (musicChain as any).rhythmChain.setTemperature?.(newTemperature);
     console.log("Applied temperature:", newTemperature, "to existing chain");
+    // Update analysis since temperature affects generation behavior
+    updateAnalysis();
   }
 });
 
@@ -93,7 +101,27 @@ orderEl.addEventListener("change", () => {
     outputEl.textContent = "Order changed. Please retrain the Markov chain.";
     rhythmOutputEl.innerHTML =
       '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Rhythm pattern will appear here after generation</div>';
+    // Clear analysis since we need to retrain
+    if (analysisEl) {
+      analysisEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px;">Analysis will appear after retraining</div>';
+    }
   }
+});
+
+// Harmonic analysis display
+const harmonicAnalysisEl = document.getElementById("harmonicAnalysis") as HTMLDivElement;
+
+// Update instrument
+instrumentEl.addEventListener("change", () => {
+  const instrument = instrumentEl.value as "piano" | "synth";
+
+  // Update the audio manager's instrument
+  if (audioManager) {
+    audioManager.setInstrument(instrument);
+  }
+
+  console.log(`Switched to ${instrument} instrument`);
 });
 
 // State
@@ -170,6 +198,13 @@ trainBtn.addEventListener("click", () => {
     // Train with separate note and rhythm sequences
     musicChain.trainWithMusic(noteSequences, rhythmSequences);
 
+    // Update harmonic analysis display
+    const detectedKey = musicChain.getDetectedKey();
+    harmonicAnalysisEl.innerHTML = `
+      <strong>Detected Key:</strong> ${detectedKey}<br>
+      <em>Analysis based on training data</em>
+    `;
+
     isTrained = true;
     currentSequence = [];
     currentRhythms = [];
@@ -225,6 +260,17 @@ generateBtn.addEventListener("click", () => {
       "Generated note durations:",
       music.notes.map((n) => n.duration)
     );
+
+    // Analyze harmonic content of generated sequence
+    const harmonicAnalysis = musicChain.analyzeSequenceHarmony(music.notes);
+
+    // Update harmonic analysis display with generated sequence info
+    harmonicAnalysisEl.innerHTML = `
+      <strong>Training Data Key:</strong> ${musicChain.getDetectedKey()}<br>
+      <strong>Generated Key:</strong> ${harmonicAnalysis.detectedKey}<br>
+      <strong>Chords Detected:</strong> ${harmonicAnalysis.chords.length}<br>
+      <em>Analysis of generated sequence</em>
+    `;
 
     updateUI();
     outputEl.textContent = currentSequence.join(" ");
@@ -308,14 +354,9 @@ playTrainingBtn.addEventListener("click", async () => {
 const importMIDIBtn = document.getElementById("importMIDI") as HTMLButtonElement;
 const midiImportArea = document.getElementById("midiImportArea") as HTMLDivElement;
 const midiFileInput = document.getElementById("midiFileInput") as HTMLInputElement;
-const openPianoRollBtn = document.getElementById("openPianoRoll") as HTMLButtonElement;
 
 importMIDIBtn.addEventListener("click", () => {
   midiImportArea.style.display = midiImportArea.style.display === "none" ? "block" : "none";
-});
-
-openPianoRollBtn.addEventListener("click", () => {
-  window.open("piano-roll.html", "_blank");
 });
 
 // MIDI file input handler
@@ -605,43 +646,13 @@ function updateAnalysis() {
     console.log("Entropy metrics:", entropyMetrics);
     console.log("Complexity metrics:", complexityMetrics);
 
-    // Debug: Check actual entropy values
-    const states = noteChain.getStates();
-    console.log("=== DETAILED STATE ANALYSIS ===");
-    console.log(`Total states: ${states.length}`);
-
-    let entropyValues: number[] = [];
-    let deterministicCount = 0;
-    const entropyThreshold = 0.1;
-
-    for (let i = 0; i < Math.min(10, states.length); i++) {
-      const state = states[i];
-      const entropy = calculateStateEntropy(state.transitions);
-      entropyValues.push(entropy);
-
-      if (entropy < entropyThreshold) {
-        deterministicCount++;
-      }
-
-      console.log(
-        `State ${i}: "${state.id}" - Entropy: ${entropy.toFixed(3)}, Transitions: ${
-          state.transitions.size
-        }`
-      );
-      console.log(
-        `  Transitions:`,
-        Array.from(state.transitions.entries())
-          .slice(0, 5)
-          .map(([k, v]) => `${k}:${v.toFixed(3)}`)
-      );
-    }
-
-    const avgEntropy = entropyValues.reduce((sum, e) => sum + e, 0) / entropyValues.length;
-    console.log(`Average entropy (sample): ${avgEntropy.toFixed(3)}`);
-    console.log(
-      `Deterministic states (sample): ${deterministicCount}/${Math.min(10, states.length)}`
-    );
-    console.log(`Entropy threshold: ${entropyThreshold}`);
+    // Debug: Log the actual analysis results
+    console.log("=== ANALYSIS RESULTS ===");
+    console.log(`Total states: ${noteChain.getStates().length}`);
+    console.log(`Determinism index: ${automataMetrics.determinismIndex}`);
+    console.log(`Deterministic states: ${automataMetrics.deterministicStates}`);
+    console.log(`Probabilistic states: ${automataMetrics.probabilisticStates}`);
+    console.log(`Entropy threshold: 0.5 (from AutomataAnalysis class)`);
     console.log("=== END DETAILED ANALYSIS ===");
 
     // Display statistics
@@ -669,20 +680,6 @@ function updateAnalysis() {
     statsEl.innerHTML = "Error getting statistics";
     analysisEl.innerHTML = "Error getting analysis";
   }
-}
-
-// Helper function to calculate state entropy
-function calculateStateEntropy(transitions: Map<string, number>): number {
-  if (transitions.size === 0) return 0;
-
-  let entropy = 0;
-  for (const probability of transitions.values()) {
-    if (probability > 0) {
-      entropy -= probability * Math.log2(probability);
-    }
-  }
-
-  return entropy;
 }
 
 // Initialize

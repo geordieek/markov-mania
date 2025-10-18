@@ -269,13 +269,22 @@
             1.0 (Normal)
           </div>
         </div>
-        <div>
-          <label for="harmonicMode">
-            <input id="harmonicMode" type="checkbox" style="width: auto; margin-right: 8px" />
-            Harmonic Mode
-          </label>
-          <div style="font-size: 12px; color: #6c757d">
-            Enable harmonic awareness and chord progression generation
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <label>Harmonic Analysis:</label>
+            <div id="harmonicAnalysis" style="font-size: 12px; color: #6c757d; margin-top: 4px">
+              Train with music data to see harmonic analysis
+            </div>
+          </div>
+          <div>
+            <label for="instrument">Instrument:</label>
+            <select id="instrument">
+              <option value="piano" selected>Piano</option>
+              <option value="synth">Synthesizer</option>
+            </select>
+            <div style="font-size: 12px; color: #6c757d">
+              Choose between real piano samples or basic synthesizer
+            </div>
           </div>
         </div>
       </div>
