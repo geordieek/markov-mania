@@ -20,6 +20,7 @@ const statsEl = document.getElementById("stats") as HTMLDivElement;
 const analysisEl = document.getElementById("analysis") as HTMLDivElement;
 const orderEl = document.getElementById("order") as HTMLSelectElement;
 const instrumentEl = document.getElementById("instrument") as HTMLSelectElement;
+const pianoStatusEl = document.getElementById("pianoStatus") as HTMLDivElement;
 
 // Markov chain instance
 const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
@@ -132,6 +133,30 @@ let audioManager: AudioManager;
 
 // Initialize audio manager
 audioManager = new AudioManager();
+
+// Initialize audio when page loads
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    // Show piano loading status
+    if (pianoStatusEl) {
+      pianoStatusEl.style.display = "block";
+    }
+
+    await audioManager.initialize();
+    console.log("Audio manager initialized on page load");
+
+    // Hide loading status
+    if (pianoStatusEl) {
+      pianoStatusEl.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Failed to initialize audio manager:", error);
+    if (pianoStatusEl) {
+      pianoStatusEl.textContent = "❌ Piano loading failed - using synthesizer";
+      pianoStatusEl.style.color = "#dc3545";
+    }
+  }
+});
 
 // Train the Markov chain
 trainBtn.addEventListener("click", () => {

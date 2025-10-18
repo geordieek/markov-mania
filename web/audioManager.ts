@@ -15,9 +15,12 @@ export interface RhythmNoteEvent {
 
 export class AudioManager {
   private synth: Tone.Synth | null = null;
+  private piano: Tone.Sampler | null = null;
   private isInitialized = false;
   private isPlaying = false;
   private currentTempo = 120;
+  private currentInstrument: "synth" | "piano" = "piano";
+  private pianoLoaded = false;
 
   constructor() {
     // Don't create audio objects until we actually need them
@@ -42,26 +45,83 @@ export class AudioManager {
 
     // Add some effects for better sound
     const reverb = new Tone.Reverb({ decay: 1.5, wet: 0.2 }).toDestination();
-    // const delay = new Tone.FeedbackDelay("8n", 0.5).toDestination();
 
     // Connect synth to effects
     this.synth.chain(reverb);
+  }
 
-    // // Connect synth directly to output (no effects)
-    // this.synth.toDestination();
+  private async createPiano(): Promise<void> {
+    if (this.piano) return;
+
+    // Create a piano sampler using Tone.js built-in Sampler
+    // Using the same approach as Tone.js official examples
+    this.piano = new Tone.Sampler({
+      urls: {
+        A0: "A0.mp3",
+        C1: "C1.mp3",
+        "D#1": "Ds1.mp3",
+        "F#1": "Fs1.mp3",
+        A1: "A1.mp3",
+        C2: "C2.mp3",
+        "D#2": "Ds2.mp3",
+        "F#2": "Fs2.mp3",
+        A2: "A2.mp3",
+        C3: "C3.mp3",
+        "D#3": "Ds3.mp3",
+        "F#3": "Fs3.mp3",
+        A3: "A3.mp3",
+        C4: "C4.mp3",
+        "D#4": "Ds4.mp3",
+        "F#4": "Fs4.mp3",
+        A4: "A4.mp3",
+        C5: "C5.mp3",
+        "D#5": "Ds5.mp3",
+        "F#5": "Fs5.mp3",
+        A5: "A5.mp3",
+        C6: "C6.mp3",
+        "D#6": "Ds6.mp3",
+        "F#6": "Fs6.mp3",
+        A6: "A6.mp3",
+        C7: "C7.mp3",
+        "D#7": "Ds7.mp3",
+        "F#7": "Fs7.mp3",
+        A7: "A7.mp3",
+        C8: "C8.mp3",
+      },
+      release: 1,
+      baseUrl: "https://tonejs.github.io/audio/salamander/",
+      onload: () => {
+        console.log("Piano samples loaded successfully");
+        this.pianoLoaded = true;
+      },
+      onerror: (error) => {
+        console.error("Error loading piano samples:", error);
+        this.pianoLoaded = false;
+      },
+    });
+
+    // Add reverb to piano for a more realistic sound
+    const reverb = new Tone.Reverb({ decay: 2.0, wet: 0.3 }).toDestination();
+    this.piano.chain(reverb);
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      // Create the synth first
+      // Create both instruments
+      await this.createPiano();
       await this.createSynth();
 
       // Start the audio context (required for user interaction)
       await Tone.start();
       this.isInitialized = true;
       console.log("Audio context started successfully");
+
+      // Wait for piano samples to load if piano is selected
+      if (this.currentInstrument === "piano") {
+        await this.waitForPianoLoad();
+      }
     } catch (error) {
       console.error("Failed to start audio context:", error);
       throw error;
@@ -71,6 +131,12 @@ export class AudioManager {
   async playSequence(notes: string[], tempo: number = 120, rhythms?: string[]): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
+    }
+
+    // Check if piano is selected but not loaded yet
+    if (this.currentInstrument === "piano" && !this.pianoLoaded) {
+      console.warn("Piano samples not loaded yet, falling back to synth");
+      this.currentInstrument = "synth";
     }
 
     // Stop any currently playing sequence
@@ -92,7 +158,10 @@ export class AudioManager {
         const noteDuration = this.parseRhythmToDuration(rhythm, beatDuration);
 
         Tone.getTransport().schedule((time) => {
-          if (this.synth) {
+          if (this.currentInstrument === "piano" && this.piano) {
+            // Piano sampler API: triggerAttackRelease
+            this.piano.triggerAttackRelease(note, noteDuration * 0.8, time);
+          } else if (this.currentInstrument === "synth" && this.synth) {
             this.synth.triggerAttackRelease(note, noteDuration * 0.8, time);
           }
         }, currentTime);
@@ -114,7 +183,10 @@ export class AudioManager {
       notes.forEach((note, index) => {
         const noteTime = index * beatDuration;
         Tone.getTransport().schedule((time) => {
-          if (this.synth) {
+          if (this.currentInstrument === "piano" && this.piano) {
+            // Piano sampler API: triggerAttackRelease
+            this.piano.triggerAttackRelease(note, beatDuration * 0.8, time);
+          } else if (this.currentInstrument === "synth" && this.synth) {
             this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
           }
         }, noteTime);
@@ -193,13 +265,13 @@ export class AudioManager {
       case "16":
         return beatDuration / 4;
       case "32":
-        return beatDuration * 1.5;
+        return beatDuration / 8;
       case "64":
-        return beatDuration * 0.75;
+        return beatDuration / 16;
       case "128":
-        return beatDuration / 3;
+        return beatDuration / 32;
       case "256":
-        return beatDuration / 1.5;
+        return beatDuration / 64;
       default:
         return beatDuration; // Default to quarter note
     }
@@ -261,5 +333,39 @@ export class AudioManager {
   // Get current tempo
   getCurrentTempo(): number {
     return this.currentTempo;
+  }
+
+  // Switch between instruments
+  setInstrument(instrument: "piano" | "synth"): void {
+    this.currentInstrument = instrument;
+    console.log(`Switched to ${instrument} instrument`);
+  }
+
+  // Get current instrument
+  getCurrentInstrument(): "piano" | "synth" {
+    return this.currentInstrument;
+  }
+
+  // Check if piano samples are loaded
+  isPianoReady(): boolean {
+    return this.piano !== null && this.pianoLoaded;
+  }
+
+  // Wait for piano samples to load
+  async waitForPianoLoad(): Promise<void> {
+    if (this.pianoLoaded) return;
+
+    return new Promise((resolve, reject) => {
+      const checkLoaded = () => {
+        if (this.pianoLoaded) {
+          resolve();
+        } else if (this.piano === null) {
+          reject(new Error("Piano not initialized"));
+        } else {
+          setTimeout(checkLoaded, 100);
+        }
+      };
+      checkLoaded();
+    });
   }
 }
