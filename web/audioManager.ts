@@ -158,11 +158,24 @@ export class AudioManager {
         const noteDuration = this.parseRhythmToDuration(rhythm, beatDuration);
 
         Tone.getTransport().schedule((time) => {
-          if (this.currentInstrument === "piano" && this.piano) {
-            // Piano sampler API: triggerAttackRelease
-            this.piano.triggerAttackRelease(note, noteDuration * 0.8, time);
-          } else if (this.currentInstrument === "synth" && this.synth) {
-            this.synth.triggerAttackRelease(note, noteDuration * 0.8, time);
+          // Check if this is a chord (contains +) or single note
+          if (note.includes("+")) {
+            // Parse chord and play all notes simultaneously
+            const chordNotes = note.split("+");
+            chordNotes.forEach((chordNote) => {
+              if (this.currentInstrument === "piano" && this.piano) {
+                this.piano.triggerAttackRelease(chordNote.trim(), noteDuration * 0.8, time);
+              } else if (this.currentInstrument === "synth" && this.synth) {
+                this.synth.triggerAttackRelease(chordNote.trim(), noteDuration * 0.8, time);
+              }
+            });
+          } else {
+            // Single note
+            if (this.currentInstrument === "piano" && this.piano) {
+              this.piano.triggerAttackRelease(note, noteDuration * 0.8, time);
+            } else if (this.currentInstrument === "synth" && this.synth) {
+              this.synth.triggerAttackRelease(note, noteDuration * 0.8, time);
+            }
           }
         }, currentTime);
 
@@ -183,11 +196,24 @@ export class AudioManager {
       notes.forEach((note, index) => {
         const noteTime = index * beatDuration;
         Tone.getTransport().schedule((time) => {
-          if (this.currentInstrument === "piano" && this.piano) {
-            // Piano sampler API: triggerAttackRelease
-            this.piano.triggerAttackRelease(note, beatDuration * 0.8, time);
-          } else if (this.currentInstrument === "synth" && this.synth) {
-            this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
+          // Check if this is a chord (contains +) or single note
+          if (note.includes("+")) {
+            // Parse chord and play all notes simultaneously
+            const chordNotes = note.split("+");
+            chordNotes.forEach((chordNote) => {
+              if (this.currentInstrument === "piano" && this.piano) {
+                this.piano.triggerAttackRelease(chordNote.trim(), beatDuration * 0.8, time);
+              } else if (this.currentInstrument === "synth" && this.synth) {
+                this.synth.triggerAttackRelease(chordNote.trim(), beatDuration * 0.8, time);
+              }
+            });
+          } else {
+            // Single note
+            if (this.currentInstrument === "piano" && this.piano) {
+              this.piano.triggerAttackRelease(note, beatDuration * 0.8, time);
+            } else if (this.currentInstrument === "synth" && this.synth) {
+              this.synth.triggerAttackRelease(note, beatDuration * 0.8, time);
+            }
           }
         }, noteTime);
       });

@@ -4,7 +4,7 @@
  * concrete MIDI data that can be played or saved to files.
  */
 
-import { MusicSequence, Note } from "../types";
+import { MusicSequence, Note, PolyphonicSequence, Chord } from "../types";
 
 // MIDI-specific extensions of base types
 export interface MIDINote extends Note {
@@ -58,6 +58,35 @@ export class MIDIGenerator {
     return {
       notes: midiNotes,
       duration: this.convertTimeToTicks(musicSequence.duration),
+      tempo: this.tempo,
+      timeSignature: this.timeSignature,
+      keySignature: this.keySignature,
+    };
+  }
+
+  /**
+   * Convert a PolyphonicSequence to MIDI format
+   */
+  generatePolyphonicMIDI(polyphonicSequence: PolyphonicSequence): MIDISequence {
+    // Convert chords to individual MIDI notes
+    const midiNotes: MIDINote[] = [];
+
+    for (const chord of polyphonicSequence.chords) {
+      for (const note of chord.notes) {
+        const midiNote: MIDINote = {
+          pitch: note.pitch,
+          velocity: note.velocity,
+          startTime: this.convertTimeToTicks(chord.startTime),
+          duration: this.convertTimeToTicks(chord.duration),
+          channel: note.channel || 0,
+        };
+        midiNotes.push(midiNote);
+      }
+    }
+
+    return {
+      notes: midiNotes,
+      duration: this.convertTimeToTicks(polyphonicSequence.duration),
       tempo: this.tempo,
       timeSignature: this.timeSignature,
       keySignature: this.keySignature,

@@ -213,13 +213,14 @@
           >Training Sequences (one sequence per line, notes separated by spaces):</label
         >
         <p style="font-size: 12px; color: #6c757d; margin: 8px 0">
-          Format: Use "note:rhythm" (e.g., "C4:4", "D4:8", "E4:16"). Available rhythms: 1 (whole), 2
-          (half), 4 (quarter), 8 (eighth), 16 (sixteenth), 32 (thirty-second)
+          Format: Use "note:rhythm" for single notes (e.g., "C4:4", "D4:8") or "chord:rhythm" for
+          chords (e.g., "C4+E4+G4:4"). Available rhythms: 1 (whole), 2 (half), 4 (quarter), 8
+          (eighth), 16 (sixteenth), 32 (thirty-second)
         </p>
         <textarea
           id="trainingData"
           rows="8"
-          placeholder="C4:4 E4:4 G4:8 C5:8 C5:2 G4:4 E4:4 C4:4&#10;C4:8 C#4:8 D4:8 D#4:8 E4:8 F4:8 F#4:8 G4:8&#10;G4:4 F#4:8 F4:8 E4:4 D#4:4 D4:16 C#4:4 C4:4&#10;C4:4 F4:4 G4:4 E4:4 A4:4 D4:4 B4:4 C5:4&#10;D4:4 E4:4 F4:4 G4:4 A4:4 B4:4 C5:4 D5:4&#10;E4:4 F4:4 G4:4 A4:4 B4:4 C5:4 D5:4 E5:4&#10;C4:1 D4:2 E4:4 F4:8 G4:16 A4:4 B4:2 C5:1&#10;G4:8 A4:8 B4:4 C5:4 D5:2 E5:4 F5:8 G5:4"
+          placeholder="G2:2 B3+D4+F#4:2 D2:2 A3+C#4+F#4:2 G2:2 B3+D4+F#4:2 D2:2 A3+C#4+F#4:2 G2:2 B3+D4+F#4+F#5:2 A5:2 D2+G5:2 A3+C#4+F#4+F#5:2 C#5:2 B4+G2:2 B3+C#5+D4+F#4:2 D5:2 A4+D2:8 A3+C#4:2 G2:2 B3+D4+F#4:2 D2:8 A3+C#4+F#4:8 G2:2 B3+D4+F#4:8 D2:2 A3+C#4+F#4+F#4:2 G2:2 B3+D4+F#4+F#5:8 A5:8 D2+G5:2 A3+C#4+F#4+F#5:8 C#5:2 B4+G2:2 B3+C#5+D4+F#4:2 D5:8 A4+D2:2 A3+C#4+F#4:2 C#5+F#2:2 A3+C#4+F#4:2 B1+F#5:2 B3+D4+F#4:2 E2+E4:2 B3+G3:2 E2:2 B3+D4+G4:2 D2:2 A3+D4+F3:2 A1+A4:2 A3+B4+C4+E4:2 C5:2 D2+E5:2 B3+D5+E4+G3:2 B4:2 D2+D5:2 B3+C5+D3+E4+G3:2 B4:2 D2+D5:2 A3+C3+D4+E3:8 D2:2 A3+C3+D4+F#3:2 D5:2 D2+E5:8 A3+C4+F4+F5:8 G5:2 A5+D2:8 A3+C4+C5+E4:2 D5:2 D2+E5:2 B3+D3+D5+E4+G3:8 B4:8 D2+D5:2 A3+C3+D4+E3:8 D2:2 A3+C3+D4+F#3:2 D5:2 E2+G5:8 B3+E4+G4:2 F#2+F#5:2 A3+C#4+F#4:2 B1+B4:2 A4+B3+D4+F#4:2 B4:2 C#5+E2:2 A4+C#4+D5+E4:2 E5:2 C#5+E2:2 A3+A4+C#4+D5:2 E5:2 E2+F#4:2 A3+B2+D4:2 B3+D4+E3+G4:2 A2+A4+C4+C5+E4+G3:2 A2+A4+D2+D3+D4+D5+F#4:1 G2:2 B3+D4+F#4:2 D2:2 A3+C#4+F#4:2 G2:2 B3+D4+F#4:2 D2:2 A3+C#4+F#4:2 G2:2 B3+D4+F#4+F#5:2 A5:8 D2+G5:2 A3+C#4+F#4+F#5:8 C#5:2 B4+G2:2 B3+C#5+D4+F#4:2 D5:8 A4+D2:8 A3+C#4:2 G2:8 B3+D4+F#4:2 D2:2 A3+C#4+F#4:2 G2:8 B3+D4+F#4:8 D2:2 A3+C#4+F#4+F#4:8 G2:2 B3+D4+F#4+F#5:2 A5:2 D2+G5:2 A3+C#4+F#4+F#5:8 C#5:2 B4+G2:1 B3+C#5+D4+F#4:2 D5:2 A4+D2:2 A3+C#4+F#4:2 C#5+F#2:2 A3+C#4+F#4:2 B1+F#5:2 B3+D4+F#4:2 E2+E4:2 B3+G3:8 E2:8 B3+D4+G4:2 D2:8 A3+D4+F3:2 A1+A4:2 A3+B4+C4+E4:2 C5:8 D2+E5:8 B3+D5+E4+G3:2 B4:8 D2+D5:2 B3+C5+D3+E4+G3:2 B4:2 D2+D5:8 A3+C3+D4+E3:8 D2:2 A3+C3+D4+F#3:8 D5:2 D2+E5:2 A3+C4+F4+F5:2 G5:2 A5+D2:8 A3+C4+C5+E4:2 D5:1 D2+E5:2 B3+D3+D5+E4+G3:2 B4:2 D2+D5:2 A3+C3+D4+E3:2 D2:2 A3+C3+D4+F#3:2 D5:2 E2+G5:2 B3+E4+G4:8 E2+F5:2 A3+A4+D4+F4:2 B4+E2:2 A3+C4+C5+F4:2 F5:2 E2+E5:2 A4+C4+D5+E4:2 C5:2 E2+E5:2 A3+A4+C4+D5:2 C5:8 E2+F4:2 A3+B2+D4:8 B3+D4+E3+G4:2 A2+A4+C4+C5+E4+G3:2 A2+A4+D2+D3+D4+D5+F4:2"
         ></textarea>
         <div class="button-group">
           <button id="train" class="primary">Train Markov Chain</button>
@@ -248,10 +249,10 @@
           <div>
             <label for="order">Order (Context Length):</label>
             <select id="order">
-              <option value="1" selected>1 (Simple)</option>
+              <option value="1">1 (Simple)</option>
               <option value="2">2 (Balanced)</option>
               <option value="3">3 (Complex)</option>
-              <option value="4">4 (Very Complex)</option>
+              <option value="4" selected>4 (Very Complex)</option>
             </select>
           </div>
           <div>
@@ -262,11 +263,20 @@
             </div>
           </div>
         </div>
-        <div>
-          <label for="temperature">Temperature (Randomness):</label>
-          <input id="temperature" type="range" min="0.1" max="2.0" step="0.1" value="1.0" />
-          <div style="font-size: 12px; color: #6c757d; text-align: center" id="temperatureValue">
-            1.0 (Normal)
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <label for="tempo">Tempo (BPM):</label>
+            <input id="tempo" type="range" min="60" max="200" step="5" value="120" />
+            <div style="font-size: 12px; color: #6c757d; text-align: center" id="tempoValue">
+              120 BPM
+            </div>
+          </div>
+          <div>
+            <label for="temperature">Temperature (Randomness):</label>
+            <input id="temperature" type="range" min="0.1" max="2.0" step="0.1" value="1.5" />
+            <div style="font-size: 12px; color: #6c757d; text-align: center" id="temperatureValue">
+              1.5 (High)
+            </div>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
@@ -297,7 +307,7 @@
 
       <div class="card">
         <label for="sequenceLength">Sequence Length:</label>
-        <input id="sequenceLength" type="number" min="4" max="32" value="12" />
+        <input id="sequenceLength" type="number" min="4" value="128" />
         <div class="button-group">
           <button id="generate" class="primary">Generate New Sequence</button>
           <button id="play" disabled>Play Sequence</button>

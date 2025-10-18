@@ -23,7 +23,7 @@ const instrumentEl = document.getElementById("instrument") as HTMLSelectElement;
 const pianoStatusEl = document.getElementById("pianoStatus") as HTMLDivElement;
 
 // Markov chain instance
-const config: MarkovConfig = { order: 2, smoothing: 0.1, temperature: 1.0 };
+const config: MarkovConfig = { order: 4, smoothing: 0.1, temperature: 1.5 };
 let musicChain = new MusicMarkovChain(config);
 
 // Analysis instances
@@ -80,12 +80,31 @@ temperatureEl.addEventListener("input", () => {
 
   // Apply temperature to existing chain if trained
   if (isTrained) {
-    (musicChain as any).noteChain.setTemperature?.(newTemperature);
-    (musicChain as any).rhythmChain.setTemperature?.(newTemperature);
+    musicChain.setTemperature(newTemperature);
     console.log("Applied temperature:", newTemperature, "to existing chain");
     // Update analysis since temperature affects generation behavior
     updateAnalysis();
   }
+});
+
+// Update tempo when tempo slider changes
+const tempoEl = document.getElementById("tempo") as HTMLInputElement;
+tempoEl.addEventListener("input", () => {
+  const newTempo = parseInt(tempoEl.value);
+  currentTempo = newTempo;
+
+  // Update the display value
+  const tempoValueEl = document.getElementById("tempoValue");
+  if (tempoValueEl) {
+    tempoValueEl.textContent = `${newTempo} BPM`;
+  }
+
+  // Update the audio manager's tempo
+  if (audioManager) {
+    audioManager.setTempo(newTempo);
+  }
+
+  console.log("Tempo changed to:", newTempo, "BPM");
 });
 
 // Update config when order changes
@@ -130,6 +149,7 @@ let isTrained = false;
 let currentSequence: string[] = [];
 let currentRhythms: string[] = [];
 let audioManager: AudioManager;
+let currentTempo = 120;
 
 // Initialize audio manager
 audioManager = new AudioManager();
@@ -183,32 +203,32 @@ trainBtn.addEventListener("click", () => {
       .filter((line) => line.length > 0)
       .map((line) => line.split(/\s+/));
 
-    // Separate notes and rhythms
-    const noteSequences: string[][] = [];
+    // Parse all tokens uniformly - treat everything as musical tokens
+    const musicSequences: string[][] = [];
     const rhythmSequences: string[][] = [];
 
     sequences.forEach((sequence) => {
-      const notes: string[] = [];
+      const musicTokens: string[] = [];
       const rhythms: string[] = [];
 
       sequence.forEach((token) => {
         if (token.includes(":")) {
-          const [note, rhythm] = token.split(":");
-          notes.push(note);
+          const [musicToken, rhythm] = token.split(":");
+          musicTokens.push(musicToken); // This could be a single note or chord
           rhythms.push(rhythm);
         } else {
           // Fallback: treat as quarter note if no rhythm specified
-          notes.push(token);
+          musicTokens.push(token);
           console.error("No rhythm specified, using quarter note as fallback");
           rhythms.push("4");
         }
       });
 
-      noteSequences.push(notes);
+      musicSequences.push(musicTokens);
       rhythmSequences.push(rhythms);
     });
 
-    console.log("Parsed note sequences:", noteSequences);
+    console.log("Parsed music sequences:", musicSequences);
     console.log("Parsed rhythm sequences:", rhythmSequences);
 
     // Rather than just 'resetting' the markov chain
@@ -216,12 +236,12 @@ trainBtn.addEventListener("click", () => {
     console.log("Training with config:", config);
     musicChain = new MusicMarkovChain(config);
 
-    // Apply temperature and smoothing to the new chain
-    (musicChain as any).noteChain.setTemperature?.(config.temperature || 1.0);
-    (musicChain as any).rhythmChain.setTemperature?.(config.temperature || 1.0);
+    // Apply temperature to the chains
+    musicChain.setTemperature(config.temperature || 1.0);
 
-    // Train with separate note and rhythm sequences
-    musicChain.trainWithMusic(noteSequences, rhythmSequences);
+    // Train with unified music sequences (treats all tokens equally)
+    console.log("Training with unified music sequences");
+    musicChain.trainWithMusic(musicSequences, rhythmSequences);
 
     // Update harmonic analysis display
     const detectedKey = musicChain.getDetectedKey();
@@ -259,16 +279,42 @@ generateBtn.addEventListener("click", () => {
     console.log("Requesting sequence of exact length:", requestedLength);
     console.log("Config:", config);
 
-    // Generate sequence with exact length requested
+    // Generate unified music sequence (treats all tokens equally)
+    console.log("Generating unified music sequence");
     const music = musicChain.generateSequence(requestedLength);
 
-    // Extract note names from the generated sequence
-    currentSequence = music.notes.map((note) => getNoteName(note.pitch));
+    // Extract music tokens from the generated sequence
+    // Group notes by startTime to handle chords properly
+    const groupedNotes = new Map<number, any[]>();
+
+    music.notes.forEach((note: any) => {
+      const startTime = note.startTime;
+      if (!groupedNotes.has(startTime)) {
+        groupedNotes.set(startTime, []);
+      }
+      groupedNotes.get(startTime)!.push(note);
+    });
+
+    currentSequence = Array.from(groupedNotes.values()).map((notesAtTime: any[]) => {
+      // Check if this is a chord (multiple notes at same time with chordId)
+      if (notesAtTime.length > 1 && notesAtTime[0].chordId) {
+        return notesAtTime[0].chordId; // Return the chord identifier
+      } else {
+        // Single note
+        const note = notesAtTime[0];
+        if (note.pitch && typeof note.pitch === "number") {
+          return getNoteName(note.pitch);
+        } else {
+          return note.toString();
+        }
+      }
+    });
 
     // Extract rhythm information from the generated sequence
-    currentRhythms = music.notes.map((note) => {
-      // Convert duration back to rhythm string for display
-      const beatDuration = (60 / 120) * 1000; // 120 BPM in milliseconds
+    currentRhythms = Array.from(groupedNotes.values()).map((notesAtTime: any[]) => {
+      // Use the first note's duration (all notes in a chord have same duration)
+      const note = notesAtTime[0];
+      const beatDuration = (60 / currentTempo) * 1000; // Current tempo in milliseconds
       const duration = note.duration;
 
       if (duration >= beatDuration * 4) return "1";
@@ -280,11 +326,8 @@ generateBtn.addEventListener("click", () => {
       return "4";
     });
 
+    console.log("Generated sequence:", currentSequence);
     console.log("Generated rhythms:", currentRhythms);
-    console.log(
-      "Generated note durations:",
-      music.notes.map((n) => n.duration)
-    );
 
     // Analyze harmonic content of generated sequence
     const harmonicAnalysis = musicChain.analyzeSequenceHarmony(music.notes);
@@ -326,7 +369,7 @@ playBtn.addEventListener("click", async () => {
 
   try {
     // Use the enhanced playSequence method that handles rhythms
-    await audioManager.playSequence(currentSequence, 120, currentRhythms);
+    await audioManager.playSequence(currentSequence, currentTempo, currentRhythms);
     updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing: ${error}`;
@@ -368,7 +411,7 @@ playTrainingBtn.addEventListener("click", async () => {
     }
 
     // Play all sequences using AudioManager
-    await audioManager.playTrainingSequences(sequences);
+    await audioManager.playTrainingSequences(sequences, currentTempo);
     updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing training sequence: ${error}`;
@@ -429,35 +472,58 @@ async function handleMIDIImport(file: File): Promise<void> {
     const arrayBuffer = await file.arrayBuffer();
     const parsedMIDI = await midiParser.parseMIDIFile(arrayBuffer);
 
-    // Extract sequences
-    const noteSequences = midiParser.extractNoteSequences(parsedMIDI);
-    const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+    // Check if MIDI contains chords
+    const stats = midiParser.getMIDIStats(parsedMIDI);
+    let trainingData: string[] = [];
 
-    // Convert to training data format
-    const trainingData = [];
-    for (let i = 0; i < noteSequences.length; i++) {
-      const noteSequence = noteSequences[i];
-      const rhythmSequence = rhythmSequences[i] || [];
+    if (stats.hasChords) {
+      console.log("MIDI file contains chords, using chord extraction");
+      // Extract chord sequences for chord-based MIDI
+      const chordSequences = midiParser.extractChordSequences(parsedMIDI);
+      const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
 
-      const combined = noteSequence
-        .map((note, j) => `${note}:${rhythmSequence[j] || "4"}`)
-        .join(" ");
+      // Convert chord sequences to training data format
+      for (let i = 0; i < chordSequences.length; i++) {
+        const chordSequence = chordSequences[i];
+        const rhythmSequence = rhythmSequences[i] || [];
 
-      trainingData.push(combined);
+        const combined = chordSequence
+          .map((chord, j) => `${chord}:${rhythmSequence[j] || "4"}`)
+          .join(" ");
+
+        trainingData.push(combined);
+      }
+    } else {
+      console.log("MIDI file contains single notes, using note extraction");
+      // Extract note sequences for single-note MIDI
+      const noteSequences = midiParser.extractNoteSequences(parsedMIDI);
+      const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+
+      // Convert to training data format
+      for (let i = 0; i < noteSequences.length; i++) {
+        const noteSequence = noteSequences[i];
+        const rhythmSequence = rhythmSequences[i] || [];
+
+        const combined = noteSequence
+          .map((note, j) => `${note}:${rhythmSequence[j] || "4"}`)
+          .join(" ");
+
+        trainingData.push(combined);
+      }
     }
 
     // Update training data textarea
     trainingDataEl.value = trainingData.join("\n");
 
     // Show MIDI stats
-    const stats = midiParser.getMIDIStats(parsedMIDI);
     outputEl.textContent =
       `MIDI imported successfully!\n\n` +
       `Tracks: ${stats.totalTracks}\n` +
       `Total Notes: ${stats.totalNotes}\n` +
       `Duration: ${(stats.duration / 1000).toFixed(1)}s\n` +
       `Tempo: ${stats.tempo} BPM\n` +
-      `Key: ${stats.keySignature}\n\n` +
+      `Key: ${stats.keySignature}\n` +
+      `Contains Chords: ${stats.hasChords ? "Yes" : "No"}\n\n` +
       `Click "Train Markov Chain" to learn from this data.`;
 
     // Hide import area

@@ -20,6 +20,31 @@ export interface Note {
   startTime: number;
   /** MIDI channel (0-15) */
   channel?: number;
+  /** Chord identifier for display purposes (when note is part of a chord) */
+  chordId?: string;
+}
+
+// Polyphonic Types
+export interface Chord {
+  /** Array of simultaneous notes */
+  notes: Note[];
+  /** Start time in milliseconds from sequence start */
+  startTime: number;
+  /** Duration in milliseconds (longest note duration) */
+  duration: number;
+  /** Chord identifier for Markov chain */
+  id: string;
+}
+
+export interface PolyphonicSequence {
+  /** Array of chords (simultaneous notes) */
+  chords: Chord[];
+  /** Total duration in milliseconds */
+  duration: number;
+  /** Musical key (for analysis) */
+  key?: string;
+  /** Time signature (for analysis) */
+  timeSignature?: string;
 }
 
 export interface RhythmPattern {

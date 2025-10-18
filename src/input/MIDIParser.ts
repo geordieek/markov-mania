@@ -4,7 +4,7 @@
  */
 
 import { Midi } from "@tonejs/midi";
-import { Note } from "../types";
+import { Note, Chord, PolyphonicSequence } from "../types";
 
 export interface ParsedMIDI {
   tracks: MIDITrack[];
@@ -229,6 +229,101 @@ export class MIDIParser {
   }
 
   /**
+   * Extract polyphonic sequences (chords) from parsed MIDI
+   */
+  extractPolyphonicSequences(midi: ParsedMIDI): PolyphonicSequence[] {
+    const sequences: PolyphonicSequence[] = [];
+
+    for (const track of midi.tracks) {
+      if (track.isDrumTrack) continue; // Skip drum tracks for now
+
+      console.log(`Processing polyphonic track: ${track.name} with ${track.notes.length} notes`);
+
+      // Group notes by start time to create chords
+      const chords = this.groupNotesIntoChords(track.notes, midi.tempo);
+
+      if (chords.length > 0) {
+        sequences.push({
+          chords,
+          duration:
+            chords.length > 0
+              ? chords[chords.length - 1].startTime + chords[chords.length - 1].duration
+              : 0,
+          key: midi.keySignature,
+          timeSignature: midi.timeSignature,
+        });
+      }
+    }
+
+    console.log(`Total polyphonic sequences extracted: ${sequences.length}`);
+    return sequences;
+  }
+
+  /**
+   * Group notes into chords based on simultaneous start times
+   */
+  private groupNotesIntoChords(notes: Note[], tempo: number): Chord[] {
+    // Sort notes by start time
+    const sortedNotes = [...notes].sort((a, b) => a.startTime - b.startTime);
+
+    const chords: Chord[] = [];
+    const timeTolerance = 50; // 50ms tolerance for simultaneous notes
+
+    for (let i = 0; i < sortedNotes.length; i++) {
+      const currentNote = sortedNotes[i];
+      const chordNotes: Note[] = [currentNote];
+
+      // Find all notes that start within the time tolerance
+      let j = i + 1;
+      while (
+        j < sortedNotes.length &&
+        Math.abs(sortedNotes[j].startTime - currentNote.startTime) <= timeTolerance
+      ) {
+        chordNotes.push(sortedNotes[j]);
+        j++;
+      }
+
+      // Create chord identifier from sorted note names
+      const noteNames = chordNotes
+        .map((note) => this.midiToNoteName(note.pitch))
+        .sort()
+        .join("+");
+
+      // Calculate chord duration (longest note duration)
+      const maxDuration = Math.max(...chordNotes.map((note) => note.duration));
+
+      chords.push({
+        notes: chordNotes,
+        startTime: currentNote.startTime,
+        duration: maxDuration,
+        id: noteNames,
+      });
+
+      // Skip the notes we've already processed
+      i = j - 1;
+    }
+
+    return chords;
+  }
+
+  /**
+   * Extract chord sequences for Markov chain training
+   */
+  extractChordSequences(midi: ParsedMIDI): string[][] {
+    const sequences: string[][] = [];
+    const polyphonicSequences = this.extractPolyphonicSequences(midi);
+
+    for (const sequence of polyphonicSequences) {
+      const chordSequence = sequence.chords.map((chord) => chord.id);
+      if (chordSequence.length > 0) {
+        sequences.push(chordSequence);
+      }
+    }
+
+    return sequences;
+  }
+
+  /**
    * Quantize note timings to reduce complexity
    */
   quantizeTimings(notes: Note[]): Note[] {
@@ -324,6 +419,32 @@ export class MIDIParser {
   }
 
   /**
+   * Check if MIDI file contains chords (simultaneous notes)
+   */
+  hasChords(midi: ParsedMIDI): boolean {
+    const timeTolerance = 50; // 50ms tolerance for simultaneous notes
+
+    for (const track of midi.tracks) {
+      if (track.isDrumTrack) continue;
+
+      // Sort notes by start time
+      const sortedNotes = [...track.notes].sort((a, b) => a.startTime - b.startTime);
+
+      // Check for simultaneous notes
+      for (let i = 0; i < sortedNotes.length - 1; i++) {
+        const currentNote = sortedNotes[i];
+        const nextNote = sortedNotes[i + 1];
+
+        if (Math.abs(nextNote.startTime - currentNote.startTime) <= timeTolerance) {
+          return true; // Found simultaneous notes (chord)
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Get statistics about the parsed MIDI
    */
   getMIDIStats(midi: ParsedMIDI): {
@@ -333,6 +454,7 @@ export class MIDIParser {
     tempo: number;
     timeSignature: string;
     keySignature: string;
+    hasChords: boolean;
     trackStats: Array<{
       name: string;
       noteCount: number;
@@ -341,6 +463,7 @@ export class MIDIParser {
     }>;
   } {
     const totalNotes = midi.tracks.reduce((sum, track) => sum + track.notes.length, 0);
+    const hasChords = this.hasChords(midi);
 
     const trackStats = midi.tracks.map((track) => ({
       name: track.name,
@@ -356,6 +479,7 @@ export class MIDIParser {
       tempo: midi.tempo,
       timeSignature: midi.timeSignature,
       keySignature: midi.keySignature,
+      hasChords,
       trackStats,
     };
   }
