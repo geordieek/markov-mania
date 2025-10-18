@@ -264,7 +264,7 @@ export class ComplexityAnalysis {
       memoryUsage: number;
     };
   } {
-    const states = this.getChainStates(chain);
+    const states = chain.getStates();
     const stateCount = states.length;
     const totalTransitions = states.reduce((sum, state) => sum + state.transitions.size, 0);
     const avgTransitionsPerState = stateCount > 0 ? totalTransitions / stateCount : 0;
@@ -322,11 +322,14 @@ export class ComplexityAnalysis {
   }
 
   private getMemoryUsage(): number {
-    // Browser memory API (if available)
-    if (typeof performance !== "undefined" && (performance as any).memory) {
-      return (performance as any).memory.usedJSHeapSize / (1024 * 1024); // MB
+    // Browser memory API (if available) - Chrome-specific
+    if (typeof performance !== "undefined" && "memory" in performance) {
+      const memory = (performance as { memory?: { usedJSHeapSize: number } }).memory;
+      if (memory) {
+        return memory.usedJSHeapSize / (1024 * 1024); // MB
+      }
     }
-    return 0; // Fallback for Node.js
+    return 0; // Fallback for Node.js or browsers without memory API
   }
 
   private getOrderReasoning(
@@ -376,13 +379,8 @@ export class ComplexityAnalysis {
     return tradeoffs.length > 0 ? tradeoffs.join(", ") : "Good balance of features";
   }
 
-  private getChainStates(chain: MarkovChain): any[] {
-    const statesMap = (chain as any).states as Map<string, any>;
-    return Array.from(statesMap.values());
-  }
-
   private estimateMemoryUsageFromChain(chain: MarkovChain): number {
-    const states = this.getChainStates(chain);
+    const states = chain.getStates();
     const stateCount = states.length;
     const totalTransitions = states.reduce((sum, state) => sum + state.transitions.size, 0);
 

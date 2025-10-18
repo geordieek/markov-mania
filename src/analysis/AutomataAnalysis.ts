@@ -1,5 +1,4 @@
 /**
- * Automata Theory Analysis for Markov Chains
  * Measures determinism, state complexity, and provides state machine visualizations
  */
 
@@ -53,7 +52,7 @@ export interface DOTGraph {
 }
 
 export class AutomataAnalysis {
-  private entropyThreshold = 0.1; // Below this, consider state deterministic
+  private entropyThreshold = 0.01; // Below this, consider state effectively deterministic
 
   /**
    * Calculate the determinism index of a Markov chain (0-1)
@@ -104,14 +103,19 @@ export class AutomataAnalysis {
         }
       }
 
-      stateInfos.push({
-        id: state.id,
-        isDeterministic: entropy < this.entropyThreshold,
-        entropy,
-        transitionCount,
-        mostLikelyTransition,
-        probability: maxProbability,
-      });
+      const isDeterministic = maxProbability === 1.0 || entropy < this.entropyThreshold;
+
+      // Only add non-deterministic states to the result
+      if (!isDeterministic) {
+        stateInfos.push({
+          id: state.id,
+          isDeterministic,
+          entropy,
+          transitionCount,
+          mostLikelyTransition,
+          probability: maxProbability,
+        });
+      }
     }
 
     // Sort by entropy (highest first)
@@ -303,9 +307,14 @@ export class AutomataAnalysis {
   // Private helper methods
 
   private getChainStates(chain: MarkovChain): MarkovState[] {
-    // Access private states property through any cast
-    const statesMap = (chain as any).states as Map<string, MarkovState>;
-    return Array.from(statesMap.values());
+    const states = chain.getStates();
+    console.log("AutomataAnalysis: Chain type:", chain.constructor.name);
+    console.log("AutomataAnalysis: States array length:", states.length);
+    if (states.length > 0) {
+      console.log("AutomataAnalysis: First state:", states[0]);
+      console.log("AutomataAnalysis: First state transitions:", states[0].transitions.size);
+    }
+    return states;
   }
 
   private calculateStateEntropy(state: MarkovState): number {

@@ -219,7 +219,8 @@ export class EntropyAnalysis {
 
     const averageSurprise = transitionCount > 0 ? totalSurprise / transitionCount : 0;
     const noveltyScore = this.calculateNoveltyFromChain(chain);
-    const predictability = 1 - chainEntropy / Math.log2(states.length || 1);
+    const predictability =
+      states.length > 1 ? 1 - chainEntropy / Math.log2(states.length) : states.length === 0 ? 0 : 1;
 
     return {
       stateEntropy: chainEntropy,
@@ -408,28 +409,49 @@ export class EntropyAnalysis {
 
   /**
    * Calculate novelty from chain structure
+   * Novelty should be low when there's little variety (few transitions per state)
+   * and high when there's lots of variety (many transitions per state)
    */
   private calculateNoveltyFromChain(chain: MarkovChain): number {
     const states = this.getChainStates(chain);
     if (states.length === 0) return 0;
 
-    // Novelty based on state diversity and transition variety
-    const totalTransitions = states.reduce((sum, state) => sum + state.transitions.size, 0);
-    const averageTransitionsPerState = totalTransitions / states.length;
+    // Calculate entropy-based novelty
+    let totalEntropy = 0;
+    let stateCount = 0;
 
-    // Higher average transitions = more variety = higher novelty potential
-    return Math.min(1, averageTransitionsPerState / 5);
+    for (const state of states) {
+      const entropy = this.calculateStateEntropy(state);
+      totalEntropy += entropy;
+      stateCount++;
+    }
+
+    if (stateCount === 0) return 0;
+
+    const averageEntropy = totalEntropy / stateCount;
+
+    // Normalize entropy to 0-1 scale
+    // Maximum entropy for a state with n transitions is log2(n)
+    // For a state with 1 transition, max entropy is 0 (completely deterministic)
+    // For a state with many transitions, max entropy is log2(n)
+    const maxTransitions = Math.max(...states.map((s) => s.transitions.size));
+    const maxPossibleEntropy = Math.log2(Math.max(1, maxTransitions));
+    const normalizedEntropy = maxPossibleEntropy > 0 ? averageEntropy / maxPossibleEntropy : 0;
+
+    return Math.min(1, normalizedEntropy);
   }
 
   // Helper methods
 
   private getChainStates(chain: MarkovChain): MarkovState[] {
-    const statesMap = (chain as any).states as Map<string, MarkovState>;
-    return Array.from(statesMap.values());
+    const states = chain.getStates();
+    console.log("EntropyAnalysis: Chain type:", chain.constructor.name);
+    console.log("EntropyAnalysis: States array length:", states.length);
+    return states;
   }
 
   private getChainOrder(chain: MarkovChain): number {
-    return (chain as any).config.order || 1;
+    return chain.getConfig().order || 1;
   }
 
   private getTransitionProbability(from: string, to: string, chain: MarkovChain): number {
