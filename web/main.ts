@@ -495,13 +495,8 @@ playTrainingBtn.addEventListener("click", async () => {
 });
 
 // MIDI import functionality
-const importMIDIBtn = document.getElementById("importMIDI") as HTMLButtonElement;
 const midiImportArea = document.getElementById("midiImportArea") as HTMLDivElement;
 const midiFileInput = document.getElementById("midiFileInput") as HTMLInputElement;
-
-importMIDIBtn.addEventListener("click", () => {
-  midiImportArea.style.display = midiImportArea.style.display === "none" ? "block" : "none";
-});
 
 // MIDI file input handler
 midiFileInput.addEventListener("change", async (event) => {
@@ -611,9 +606,6 @@ async function handleMIDIImport(file: File): Promise<void> {
       `Key: ${stats.keySignature}\n` +
       `Contains Chords: ${stats.hasChords ? "Yes" : "No"}\n\n` +
       `Click "Train Markov Chain" to learn from this data.`;
-
-    // Hide import area
-    midiImportArea.style.display = "none";
   } catch (error) {
     outputEl.textContent = `Error importing MIDI file: ${error}`;
   }
