@@ -60,6 +60,15 @@
         background: #1d4ed8;
         transform: translateY(-1px);
       }
+      button.secondary {
+        background: #6c757d;
+        color: white;
+        border-color: #5a6268;
+      }
+      button.secondary:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+      }
       button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -160,7 +169,7 @@
         padding: 8px 12px;
         font-weight: 600;
         text-align: center;
-        min-width: 60px;
+        min-width: 80px;
         height: 60px;
         position: relative;
         display: flex;
@@ -168,7 +177,7 @@
         justify-content: center;
         align-items: center;
         transition: all 0.2s ease;
-        flex-shrink: 0;
+        flex: 1;
         overflow: hidden;
         box-sizing: border-box;
       }
@@ -492,17 +501,25 @@
 
       <div class="card">
         <label>Markov Chain Analysis:</label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+        <div
+          style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px"
+        >
           <div>
             <h4 style="margin: 0 0 8px 0; color: #374151">Statistics</h4>
-            <div id="stats" style="font-size: 13px; line-height: 1.4">
+            <div id="stats" style="font-size: 16px; line-height: 1.4">
               Train the chain to see statistics
             </div>
           </div>
           <div>
             <h4 style="margin: 0 0 8px 0; color: #374151">Transition Analysis</h4>
-            <div id="analysis" style="font-size: 13px; line-height: 1.4">
+            <div id="analysis" style="font-size: 16px; line-height: 1.4">
               Train the chain to see analysis
+            </div>
+          </div>
+          <div>
+            <h4 style="margin: 0 0 8px 0; color: #374151">Complexity Analysis</h4>
+            <div id="complexity" style="font-size: 16px; line-height: 1.4">
+              Train the chain to see complexity analysis
             </div>
           </div>
         </div>
