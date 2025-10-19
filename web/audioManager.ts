@@ -128,7 +128,12 @@ export class AudioManager {
     }
   }
 
-  async playSequence(notes: string[], tempo: number = 120, rhythms?: string[]): Promise<void> {
+  async playSequence(
+    notes: string[],
+    tempo: number = 120,
+    rhythms?: string[],
+    onNoteStart?: (index: number) => void
+  ): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -158,6 +163,11 @@ export class AudioManager {
         const noteDuration = this.parseRhythmToDuration(rhythm, beatDuration);
 
         Tone.getTransport().schedule((time) => {
+          // Notify that this note is starting
+          if (onNoteStart) {
+            onNoteStart(index);
+          }
+
           // Check if this is a chord (contains +) or single note
           if (note.includes("+")) {
             // Parse chord and play all notes simultaneously
@@ -196,6 +206,11 @@ export class AudioManager {
       notes.forEach((note, index) => {
         const noteTime = index * beatDuration;
         Tone.getTransport().schedule((time) => {
+          // Notify that this note is starting
+          if (onNoteStart) {
+            onNoteStart(index);
+          }
+
           // Check if this is a chord (contains +) or single note
           if (note.includes("+")) {
             // Parse chord and play all notes simultaneously

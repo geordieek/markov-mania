@@ -120,7 +120,7 @@ orderEl.addEventListener("change", () => {
     updateTransitions([]);
     outputEl.textContent = "Order changed. Please retrain the Markov chain.";
     rhythmOutputEl.innerHTML =
-      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Rhythm pattern will appear here after generation</div>';
+      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Generated sequence will appear here after generation</div>';
     // Clear analysis since we need to retrain
     if (analysisEl) {
       analysisEl.innerHTML =
@@ -261,7 +261,7 @@ trainBtn.addEventListener("click", () => {
     updateTransitions(sequences);
     outputEl.textContent = `Trained with ${sequences.length} sequences! Click "Generate New Sequence" to create music.`;
     rhythmOutputEl.innerHTML =
-      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Rhythm pattern will appear here after generation</div>';
+      '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Generated sequence will appear here after generation</div>';
   } catch (error) {
     outputEl.textContent = `Error training: ${error}`;
   }
@@ -341,15 +341,16 @@ generateBtn.addEventListener("click", () => {
     `;
 
     updateUI();
-    outputEl.textContent = currentSequence.join(" ");
 
-    // Display rhythm pattern visually
-    rhythmOutputEl.innerHTML = currentRhythms
-      .map((rhythm) => {
+    // Display unified sequence with notes inside colored rhythm boxes
+    rhythmOutputEl.innerHTML = currentSequence
+      .map((note, index) => {
+        const rhythm = currentRhythms[index] || "4";
         const fraction = getRhythmFraction(rhythm);
-        return `<div class="rhythm-item" data-rhythm="${rhythm}">
-        <span class="rhythm-fraction">${fraction}</span>
-      </div>`;
+        return `<div class="rhythm-item" data-rhythm="${rhythm}" data-rhythm-fraction="${fraction}">
+          <div class="rhythm-note">${note}</div>
+          <div class="rhythm-fraction">${fraction}</div>
+        </div>`;
       })
       .join("");
 
@@ -368,8 +369,13 @@ playBtn.addEventListener("click", async () => {
   if (!currentSequence.length) return;
 
   try {
-    // Use the enhanced playSequence method that handles rhythms
-    await audioManager.playSequence(currentSequence, currentTempo, currentRhythms);
+    // Clear any existing highlighting
+    clearAllHighlighting();
+
+    // Use the enhanced playSequence method that handles rhythms with live highlighting
+    await audioManager.playSequence(currentSequence, currentTempo, currentRhythms, (noteIndex) => {
+      highlightNote(noteIndex);
+    });
     updateUI();
   } catch (error) {
     outputEl.textContent = `Error playing: ${error}`;
@@ -380,6 +386,8 @@ playBtn.addEventListener("click", async () => {
 stopBtn.addEventListener("click", () => {
   // Stop all audio playback
   audioManager.stop();
+  // Clear all highlighting when stopping
+  clearAllHighlighting();
   updateUI();
 });
 
@@ -771,6 +779,25 @@ function updateAnalysis() {
     statsEl.innerHTML = "Error getting statistics";
     analysisEl.innerHTML = "Error getting analysis";
   }
+}
+
+// Highlighting functions for live playback
+function highlightNote(noteIndex: number): void {
+  // Clear any existing highlighting first
+  clearAllHighlighting();
+
+  // Add highlighting to the current note
+  const rhythmItems = document.querySelectorAll(".rhythm-item");
+  if (rhythmItems[noteIndex]) {
+    rhythmItems[noteIndex].classList.add("playing");
+  }
+}
+
+function clearAllHighlighting(): void {
+  const rhythmItems = document.querySelectorAll(".rhythm-item");
+  rhythmItems.forEach((item) => {
+    item.classList.remove("playing");
+  });
 }
 
 // Initialize

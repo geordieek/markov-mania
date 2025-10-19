@@ -149,6 +149,8 @@
         flex-wrap: wrap;
         gap: 8px;
         align-items: center;
+        justify-content: space-between;
+        width: 100%;
       }
 
       .rhythm-item {
@@ -158,8 +160,35 @@
         padding: 8px 12px;
         font-weight: 600;
         text-align: center;
-        min-width: 60px;
+        min-width: 80px;
+        height: 60px;
         position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s ease;
+        flex: 1;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .rhythm-note {
+        font-size: 14px;
+        font-weight: 700;
+        color: inherit;
+        line-height: 1.2;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        text-align: center;
+        max-width: 100%;
+      }
+
+      .rhythm-fraction {
+        font-size: 10px;
+        opacity: 0.7;
+        margin-top: 2px;
       }
 
       .rhythm-item[data-rhythm="1"] {
@@ -193,11 +222,53 @@
         color: #4a148c;
       }
 
-      .rhythm-fraction {
-        font-size: 18px;
-        margin-bottom: 4px;
-        display: block;
-        font-weight: bold;
+      /* Playing state - much more dramatic colors */
+      .rhythm-item.playing[data-rhythm="1"] {
+        background: #1976d2;
+        border-color: #0d47a1;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(25, 118, 210, 0.8), 0 0 30px rgba(25, 118, 210, 0.4);
+        transform: scale(1.05);
+      }
+
+      .rhythm-item.playing[data-rhythm="2"] {
+        background: #388e3c;
+        border-color: #1b5e20;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(56, 142, 60, 0.8), 0 0 30px rgba(56, 142, 60, 0.4);
+        transform: scale(1.05);
+      }
+
+      .rhythm-item.playing[data-rhythm="4"] {
+        background: #f57c00;
+        border-color: #e65100;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(245, 124, 0, 0.8), 0 0 30px rgba(245, 124, 0, 0.4);
+        transform: scale(1.05);
+      }
+
+      .rhythm-item.playing[data-rhythm="8"] {
+        background: #c2185b;
+        border-color: #880e4f;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(194, 24, 91, 0.8), 0 0 30px rgba(194, 24, 91, 0.4);
+        transform: scale(1.05);
+      }
+
+      .rhythm-item.playing[data-rhythm="16"] {
+        background: #689f38;
+        border-color: #33691e;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(104, 159, 56, 0.8), 0 0 30px rgba(104, 159, 56, 0.4);
+        transform: scale(1.05);
+      }
+
+      .rhythm-item.playing[data-rhythm="32"] {
+        background: #7b1fa2;
+        border-color: #4a148c;
+        color: #ffffff;
+        box-shadow: 0 0 15px rgba(123, 31, 162, 0.8), 0 0 30px rgba(123, 31, 162, 0.4);
+        transform: scale(1.05);
       }
     </style>
   </head>
@@ -317,16 +388,9 @@
 
       <div class="card">
         <label>Generated Sequence:</label>
-        <div id="output" class="output">
-          Click "Train Markov Chain" first, then "Generate New Sequence"
-        </div>
-      </div>
-
-      <div class="card">
-        <label>Generated Rhythm Pattern:</label>
         <div id="rhythmOutput" class="rhythm-display" style="min-height: 80px">
           <div style="color: #6c757d; text-align: center; padding: 20px; width: 100%">
-            Rhythm pattern will appear here after generation
+            Generated sequence will appear here after generation
           </div>
         </div>
       </div>
