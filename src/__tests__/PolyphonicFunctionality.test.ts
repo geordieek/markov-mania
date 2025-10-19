@@ -23,7 +23,7 @@ describe("Polyphonic Functionality", () => {
     it("should parse chord identifiers correctly", () => {
       const chordId = "C4+E4+G4";
       const notes = musicChain["parseChordId"](chordId);
-      
+
       expect(notes).toHaveLength(3);
       expect(notes[0].pitch).toBe(60); // C4
       expect(notes[1].pitch).toBe(64); // E4
@@ -33,7 +33,7 @@ describe("Polyphonic Functionality", () => {
     it("should handle single notes as chords", () => {
       const chordId = "C4";
       const notes = musicChain["parseChordId"](chordId);
-      
+
       expect(notes).toHaveLength(1);
       expect(notes[0].pitch).toBe(60); // C4
     });
@@ -41,15 +41,15 @@ describe("Polyphonic Functionality", () => {
     it("should handle complex chord identifiers", () => {
       const chordId = "C4+E4+G4+B4";
       const notes = musicChain["parseChordId"](chordId);
-      
+
       expect(notes).toHaveLength(4);
-      expect(notes.map(n => n.pitch)).toEqual([60, 64, 67, 71]); // C4, E4, G4, B4
+      expect(notes.map((n) => n.pitch)).toEqual([60, 64, 67, 71]); // C4, E4, G4, B4
     });
 
     it("should handle sharp and flat notes", () => {
       const chordId = "F#4+Ab4";
       const notes = musicChain["parseChordId"](chordId);
-      
+
       expect(notes).toHaveLength(2);
       expect(notes[0].pitch).toBe(66); // F#4
       expect(notes[1].pitch).toBe(68); // Ab4 (G#4)
@@ -68,7 +68,7 @@ describe("Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(3);
       expect(chords[1].notes).toHaveLength(3);
@@ -85,7 +85,7 @@ describe("Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(3); // C4, E4, G4 grouped together
       expect(chords[1].notes).toHaveLength(1); // F4 alone
@@ -99,7 +99,7 @@ describe("Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords[0].duration).toBe(1000); // Longest duration
     });
   });
@@ -125,12 +125,8 @@ describe("Polyphonic Functionality", () => {
     });
 
     it("should generate polyphonic sequences", () => {
-      const chordSequences = [
-        ["C4+E4+G4", "F4+A4+C5", "G4+B4+D5", "C4+E4+G4"],
-      ];
-      const rhythmPatterns = [
-        ["4", "4", "4", "4"],
-      ];
+      const chordSequences = [["C4+E4+G4", "F4+A4+C5", "G4+B4+D5", "C4+E4+G4"]];
+      const rhythmPatterns = [["4", "4", "4", "4"]];
 
       musicChain.trainWithPolyphonicMusic(chordSequences, rhythmPatterns);
       const sequence = musicChain.generatePolyphonicSequence(4);
@@ -143,18 +139,14 @@ describe("Polyphonic Functionality", () => {
     });
 
     it("should generate chords with correct structure", () => {
-      const chordSequences = [
-        ["C4+E4+G4", "F4+A4+C5"],
-      ];
-      const rhythmPatterns = [
-        ["4", "4"],
-      ];
+      const chordSequences = [["C4+E4+G4", "F4+A4+C5"]];
+      const rhythmPatterns = [["4", "4"]];
 
       musicChain.trainWithPolyphonicMusic(chordSequences, rhythmPatterns);
       const sequence = musicChain.generatePolyphonicSequence(2);
 
       expect(sequence.chords).toHaveLength(2);
-      sequence.chords.forEach(chord => {
+      sequence.chords.forEach((chord) => {
         expect(chord.notes).toBeDefined();
         expect(chord.notes.length).toBeGreaterThan(0);
         expect(chord.startTime).toBeGreaterThanOrEqual(0);
@@ -223,7 +215,7 @@ describe("Polyphonic Functionality", () => {
       const midiSequence = midiGenerator.generatePolyphonicMIDI(polyphonicSequence);
 
       // Both notes should have the same start time
-      const firstChordNotes = midiSequence.notes.filter(note => note.startTime === 0);
+      const firstChordNotes = midiSequence.notes.filter((note) => note.startTime === 0);
       expect(firstChordNotes).toHaveLength(2);
     });
   });
@@ -251,7 +243,7 @@ describe("Polyphonic Functionality", () => {
       expect(midiSequence.notes.length).toBeGreaterThan(0);
 
       // 4. Verify all notes have valid properties
-      midiSequence.notes.forEach(note => {
+      midiSequence.notes.forEach((note) => {
         expect(note.pitch).toBeGreaterThanOrEqual(0);
         expect(note.pitch).toBeLessThanOrEqual(127);
         expect(note.velocity).toBeGreaterThan(0);
@@ -262,24 +254,20 @@ describe("Polyphonic Functionality", () => {
     });
 
     it("should maintain chord structure through generation", () => {
-      const chordSequences = [
-        ["C4+E4+G4", "F4+A4+C5"],
-      ];
-      const rhythmPatterns = [
-        ["4", "4"],
-      ];
+      const chordSequences = [["C4+E4+G4", "F4+A4+C5"]];
+      const rhythmPatterns = [["4", "4"]];
 
       musicChain.trainWithPolyphonicMusic(chordSequences, rhythmPatterns);
       const sequence = musicChain.generatePolyphonicSequence(2);
 
       // Each chord should have multiple notes
-      sequence.chords.forEach(chord => {
+      sequence.chords.forEach((chord) => {
         expect(chord.notes.length).toBeGreaterThan(1);
       });
 
       // Convert to MIDI and verify chord structure is preserved
       const midiSequence = midiGenerator.generatePolyphonicMIDI(sequence);
-      
+
       // Group notes by start time to verify chords
       const notesByTime = new Map<number, typeof midiSequence.notes>();
       for (const note of midiSequence.notes) {
@@ -310,12 +298,8 @@ describe("Polyphonic Functionality", () => {
     });
 
     it("should handle invalid chord identifiers", () => {
-      const chordSequences = [
-        ["C4+E4+G4", "INVALID+CHORD", "F4+A4+C5"],
-      ];
-      const rhythmPatterns = [
-        ["4", "4", "4"],
-      ];
+      const chordSequences = [["C4+E4+G4", "INVALID+CHORD", "F4+A4+C5"]];
+      const rhythmPatterns = [["4", "4", "4"]];
 
       expect(() => {
         musicChain.trainWithPolyphonicMusic(chordSequences, rhythmPatterns);
@@ -323,18 +307,14 @@ describe("Polyphonic Functionality", () => {
     });
 
     it("should handle single note chords", () => {
-      const chordSequences = [
-        ["C4", "D4", "E4"],
-      ];
-      const rhythmPatterns = [
-        ["4", "4", "4"],
-      ];
+      const chordSequences = [["C4", "D4", "E4"]];
+      const rhythmPatterns = [["4", "4", "4"]];
 
       musicChain.trainWithPolyphonicMusic(chordSequences, rhythmPatterns);
       const sequence = musicChain.generatePolyphonicSequence(3);
 
       expect(sequence.chords).toHaveLength(3);
-      sequence.chords.forEach(chord => {
+      sequence.chords.forEach((chord) => {
         expect(chord.notes).toHaveLength(1);
       });
     });

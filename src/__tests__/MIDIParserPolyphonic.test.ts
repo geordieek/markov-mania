@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { MIDIParser } from "../input/MIDIParser";
-import { Note, ParsedMIDI, MIDITrack } from "../types";
+import { Note } from "../types";
+import { ParsedMIDI, MIDITrack } from "../input/MIDIParser";
 
 describe("MIDI Parser Polyphonic Functionality", () => {
   let midiParser: MIDIParser;
@@ -21,7 +22,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(3);
       expect(chords[1].notes).toHaveLength(3);
@@ -38,7 +39,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(3); // C4, E4, G4 grouped together
       expect(chords[1].notes).toHaveLength(1); // F4 alone
@@ -52,7 +53,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords[0].id).toBe("C4+E4+G4"); // Should be sorted by pitch
     });
 
@@ -64,7 +65,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords[0].duration).toBe(1000); // Longest duration
     });
 
@@ -75,7 +76,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(1);
       expect(chords[1].notes).toHaveLength(1);
@@ -113,7 +114,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       };
 
       const sequences = midiParser.extractPolyphonicSequences(mockMIDI);
-      
+
       expect(sequences).toHaveLength(1);
       expect(sequences[0].chords).toHaveLength(2);
       expect(sequences[0].chords[0].id).toBe("C4+E4+G4");
@@ -152,7 +153,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       };
 
       const sequences = midiParser.extractPolyphonicSequences(mockMIDI);
-      
+
       expect(sequences).toHaveLength(1); // Only melody track
       expect(sequences[0].chords).toHaveLength(1);
       expect(sequences[0].chords[0].id).toBe("C4+E4");
@@ -175,7 +176,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       };
 
       const sequences = midiParser.extractPolyphonicSequences(mockMIDI);
-      
+
       expect(sequences).toHaveLength(0);
     });
   });
@@ -204,7 +205,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       };
 
       const chordSequences = midiParser.extractChordSequences(mockMIDI);
-      
+
       expect(chordSequences).toHaveLength(1);
       expect(chordSequences[0]).toEqual(["C4+E4+G4", "A4+F4"]);
     });
@@ -238,7 +239,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       };
 
       const chordSequences = midiParser.extractChordSequences(mockMIDI);
-      
+
       expect(chordSequences).toHaveLength(2);
       expect(chordSequences[0]).toEqual(["C4+E4"]);
       expect(chordSequences[1]).toEqual(["A4+F4"]);
@@ -254,7 +255,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(2);
       expect(chords[0].notes).toHaveLength(2); // C4, E4 grouped together
       expect(chords[1].notes).toHaveLength(1); // G4 alone
@@ -267,7 +268,7 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(1);
       expect(chords[0].notes).toHaveLength(2);
       expect(chords[0].duration).toBe(1000); // Should use the non-zero duration
@@ -280,11 +281,10 @@ describe("MIDI Parser Polyphonic Functionality", () => {
       ];
 
       const chords = midiParser["groupNotesIntoChords"](notes, 120);
-      
+
       expect(chords).toHaveLength(1);
       expect(chords[0].notes).toHaveLength(2);
       expect(chords[0].startTime).toBe(-100);
     });
   });
 });
-
