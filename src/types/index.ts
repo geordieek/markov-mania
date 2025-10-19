@@ -125,14 +125,6 @@ export interface MultiVoiceSequence {
   polyphony: number;
 }
 
-// Variable Order Markov Chain Types
-export interface VariableOrderConfig extends MarkovConfig {
-  maxOrder: number;
-  minOrder: number;
-  adaptationThreshold: number;
-  contextSensitivity: number;
-}
-
 export interface OrderAnalysis {
   currentOrder: number;
   averageOrder: number;

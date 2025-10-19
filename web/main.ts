@@ -26,6 +26,9 @@ const maxRepetitionEl = document.getElementById("maxRepetition") as HTMLInputEle
 const restartIntervalEl = document.getElementById("restartInterval") as HTMLInputElement;
 const longTermPreventionEl = document.getElementById("longTermPrevention") as HTMLSelectElement;
 
+// New elements from learning demo
+const sampleTransitionsEl = document.getElementById("sampleTransitions") as HTMLDivElement;
+
 // Markov chain instance
 const config: MarkovConfig = { order: 4, smoothing: 0.1, temperature: 1.5 };
 let musicChain = new MusicMarkovChain(config);
@@ -415,7 +418,8 @@ generateBtn.addEventListener("click", () => {
       .map((note, index) => {
         const rhythm = currentRhythms[index] || "4";
         const fraction = getRhythmFraction(rhythm);
-        return `<div class="rhythm-item" data-rhythm="${rhythm}" data-rhythm-fraction="${fraction}">
+        const width = getRhythmWidth(rhythm);
+        return `<div class="rhythm-item" data-rhythm="${rhythm}" data-rhythm-fraction="${fraction}" style="width: ${width}px">
           <div class="rhythm-note">${note}</div>
           <div class="rhythm-fraction">${fraction}</div>
         </div>`;
@@ -497,12 +501,17 @@ playTrainingBtn.addEventListener("click", async () => {
 // MIDI import functionality
 const midiImportArea = document.getElementById("midiImportArea") as HTMLDivElement;
 const midiFileInput = document.getElementById("midiFileInput") as HTMLInputElement;
+const uploadedFilesList = document.getElementById("uploadedFilesList") as HTMLDivElement;
+const filesList = document.getElementById("filesList") as HTMLDivElement;
+
+// Track uploaded files
+let uploadedFiles: Array<{ name: string; size: number; lastModified: number }> = [];
 
 // MIDI file input handler
 midiFileInput.addEventListener("change", async (event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (file) {
-    await handleMIDIImport(file);
+  const files = (event.target as HTMLInputElement).files;
+  if (files && files.length > 0) {
+    await handleMultipleMIDIImport(Array.from(files));
   }
 });
 
@@ -522,11 +531,15 @@ midiImportArea.addEventListener("drop", async (event) => {
 
   const files = event.dataTransfer?.files;
   if (files && files.length > 0) {
-    const file = files[0];
-    if (file.name.toLowerCase().endsWith(".mid") || file.name.toLowerCase().endsWith(".midi")) {
-      await handleMIDIImport(file);
+    const midiFiles = Array.from(files).filter(
+      (file) =>
+        file.name.toLowerCase().endsWith(".mid") || file.name.toLowerCase().endsWith(".midi")
+    );
+
+    if (midiFiles.length > 0) {
+      await handleMultipleMIDIImport(midiFiles);
     } else {
-      outputEl.textContent = "Please select a MIDI file (.mid or .midi)";
+      outputEl.textContent = "Please select MIDI files (.mid or .midi)";
     }
   }
 });
@@ -536,56 +549,83 @@ midiImportArea.addEventListener("click", () => {
   midiFileInput.click();
 });
 
-async function handleMIDIImport(file: File): Promise<void> {
+// Handle multiple MIDI file imports
+async function handleMultipleMIDIImport(files: File[]): Promise<void> {
   try {
-    outputEl.textContent = `Importing MIDI file: ${file.name}...`;
+    outputEl.textContent = `Importing ${files.length} MIDI file(s)...`;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const parsedMIDI = await midiParser.parseMIDIFile(arrayBuffer);
+    let allTrainingData: string[] = [];
+    let totalStats = {
+      totalTracks: 0,
+      totalNotes: 0,
+      duration: 0,
+      tempo: 0,
+      keySignature: "Unknown",
+      hasChords: false,
+    };
 
-    // Check if MIDI contains chords
-    const stats = midiParser.getMIDIStats(parsedMIDI);
-    let trainingData: string[] = [];
+    for (const file of files) {
+      const arrayBuffer = await file.arrayBuffer();
+      const parsedMIDI = await midiParser.parseMIDIFile(arrayBuffer);
 
-    if (stats.hasChords) {
-      console.log("MIDI file contains chords, using chord extraction");
-      // Extract chord sequences for chord-based MIDI
-      const chordSequences = midiParser.extractChordSequences(parsedMIDI);
-      const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+      // Add file to uploaded files list
+      addFileToList(file);
 
-      // Convert chord sequences to training data format
-      for (let i = 0; i < chordSequences.length; i++) {
-        const chordSequence = chordSequences[i];
-        const rhythmSequence = rhythmSequences[i] || [];
+      // Check if MIDI contains chords
+      const stats = midiParser.getMIDIStats(parsedMIDI);
 
-        const combined = chordSequence
-          .map((chord, j) => `${chord}:${rhythmSequence[j] || "4"}`)
-          .join(" ");
+      // Accumulate stats
+      totalStats.totalTracks += stats.totalTracks;
+      totalStats.totalNotes += stats.totalNotes;
+      totalStats.duration = Math.max(totalStats.duration, stats.duration);
+      if (totalStats.tempo === 0) totalStats.tempo = stats.tempo;
+      if (totalStats.keySignature === "Unknown") totalStats.keySignature = stats.keySignature;
+      totalStats.hasChords = totalStats.hasChords || stats.hasChords;
 
-        trainingData.push(combined);
+      let trainingData: string[] = [];
+
+      if (stats.hasChords) {
+        console.log(`MIDI file ${file.name} contains chords, using chord extraction`);
+        // Extract chord sequences for chord-based MIDI
+        const chordSequences = midiParser.extractChordSequences(parsedMIDI);
+        const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+
+        // Convert chord sequences to training data format
+        for (let i = 0; i < chordSequences.length; i++) {
+          const chordSequence = chordSequences[i];
+          const rhythmSequence = rhythmSequences[i] || [];
+
+          const combined = chordSequence
+            .map((chord, j) => `${chord}:${rhythmSequence[j] || "4"}`)
+            .join(" ");
+
+          trainingData.push(combined);
+        }
+      } else {
+        console.log(`MIDI file ${file.name} contains single notes, using note extraction`);
+        // Extract note sequences for single-note MIDI
+        const noteSequences = midiParser.extractNoteSequences(parsedMIDI);
+        const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
+
+        // Convert to training data format
+        for (let i = 0; i < noteSequences.length; i++) {
+          const noteSequence = noteSequences[i];
+          const rhythmSequence = rhythmSequences[i] || [];
+
+          const combined = noteSequence
+            .map((note, j) => `${note}:${rhythmSequence[j] || "4"}`)
+            .join(" ");
+
+          trainingData.push(combined);
+        }
       }
-    } else {
-      console.log("MIDI file contains single notes, using note extraction");
-      // Extract note sequences for single-note MIDI
-      const noteSequences = midiParser.extractNoteSequences(parsedMIDI);
-      const rhythmSequences = midiParser.extractRhythmSequences(parsedMIDI);
 
-      // Convert to training data format
-      for (let i = 0; i < noteSequences.length; i++) {
-        const noteSequence = noteSequences[i];
-        const rhythmSequence = rhythmSequences[i] || [];
-
-        const combined = noteSequence
-          .map((note, j) => `${note}:${rhythmSequence[j] || "4"}`)
-          .join(" ");
-
-        trainingData.push(combined);
-      }
+      allTrainingData.push(...trainingData);
     }
 
     // Append training data to existing content
     const existingData = trainingDataEl.value.trim();
-    const newData = trainingData.join("\n");
+    const newData = allTrainingData.join("\n");
 
     if (existingData) {
       // Add a newline separator if there's existing data
@@ -595,20 +635,62 @@ async function handleMIDIImport(file: File): Promise<void> {
       trainingDataEl.value = newData;
     }
 
-    // Show MIDI stats
+    // Show combined MIDI stats
     const appendMessage = existingData ? " (appended to existing data)" : "";
     outputEl.textContent =
-      `MIDI imported successfully${appendMessage}!\n\n` +
-      `Tracks: ${stats.totalTracks}\n` +
-      `Total Notes: ${stats.totalNotes}\n` +
-      `Duration: ${(stats.duration / 1000).toFixed(1)}s\n` +
-      `Tempo: ${stats.tempo} BPM\n` +
-      `Key: ${stats.keySignature}\n` +
-      `Contains Chords: ${stats.hasChords ? "Yes" : "No"}\n\n` +
+      `MIDI files imported successfully${appendMessage}!\n\n` +
+      `Files: ${files.length}\n` +
+      `Total Tracks: ${totalStats.totalTracks}\n` +
+      `Total Notes: ${totalStats.totalNotes}\n` +
+      `Duration: ${(totalStats.duration / 1000).toFixed(1)}s\n` +
+      `Tempo: ${totalStats.tempo} BPM\n` +
+      `Key: ${totalStats.keySignature}\n` +
+      `Contains Chords: ${totalStats.hasChords ? "Yes" : "No"}\n\n` +
       `Click "Train Markov Chain" to learn from this data.`;
   } catch (error) {
-    outputEl.textContent = `Error importing MIDI file: ${error}`;
+    outputEl.textContent = `Error importing MIDI files: ${error}`;
   }
+}
+
+// Add file to the uploaded files list
+function addFileToList(file: File): void {
+  const fileInfo = {
+    name: file.name,
+    size: file.size,
+    lastModified: file.lastModified,
+  };
+
+  // Check if file already exists (by name and size)
+  const exists = uploadedFiles.some((f) => f.name === fileInfo.name && f.size === fileInfo.size);
+  if (!exists) {
+    uploadedFiles.push(fileInfo);
+    updateFilesListDisplay();
+  }
+}
+
+// Update the files list display
+function updateFilesListDisplay(): void {
+  if (uploadedFiles.length === 0) {
+    uploadedFilesList.style.display = "none";
+    return;
+  }
+
+  uploadedFilesList.style.display = "block";
+
+  const filesHtml = uploadedFiles
+    .map((file) => {
+      const sizeKB = (file.size / 1024).toFixed(1);
+      const date = new Date(file.lastModified).toLocaleDateString();
+      return `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #e9ecef;">
+        <span>${file.name}</span>
+        <span style="color: #6c757d; font-size: 11px;">${sizeKB} KB • ${date}</span>
+      </div>
+    `;
+    })
+    .join("");
+
+  filesList.innerHTML = filesHtml;
 }
 
 // Get note name from pitch
@@ -645,6 +727,22 @@ function getRhythmFraction(rhythm: string): string {
   // Fallback to quarter note
   console.error("Rhythm information couldn't be parsed");
   return `1/4`;
+}
+
+// Get width for rhythm item based on duration
+function getRhythmWidth(rhythm: string): number {
+  // Base width for quarter note (4) is 80px
+  const baseWidth = 80;
+
+  if (/^\d+$/.test(rhythm)) {
+    const rhythmNumber = parseInt(rhythm, 10);
+    // Calculate width based on rhythm duration
+    // Longer notes get wider boxes
+    return Math.max(60, baseWidth * (4 / rhythmNumber));
+  }
+
+  // Fallback to quarter note width
+  return baseWidth;
 }
 
 // Update UI state
@@ -845,9 +943,48 @@ function updateAnalysis() {
       <strong>Bottleneck:</strong> ${complexityMetrics.bottleneck}<br>
       <strong>Recommendation:</strong> ${complexityMetrics.recommendation}
     `;
+
+    // Update sample transitions
+    updateSampleTransitions();
   } catch (error) {
     statsEl.innerHTML = "Error getting statistics";
     analysisEl.innerHTML = "Error getting analysis";
+  }
+}
+
+// Update sample transitions visualization
+function updateSampleTransitions() {
+  if (!sampleTransitionsEl || !musicChain) return;
+
+  try {
+    const noteChain = musicChain.getNoteChain();
+    const analysis = noteChain.getTransitionAnalysis();
+
+    if (!analysis || !analysis.sampleTransitions || analysis.sampleTransitions.length === 0) {
+      sampleTransitionsEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px">No transitions available</div>';
+      return;
+    }
+
+    let html = "<h4>Sample Transitions:</h4>";
+    analysis.sampleTransitions.slice(0, 8).forEach((transition) => {
+      html += `<div style="margin: 10px 0;">`;
+      html += `<span class="state-node">${transition.context}</span>`;
+      html += `<span class="transition-arrow">→</span>`;
+
+      transition.transitions.forEach((t) => {
+        html += `<span class="state-node" style="background: #48bb78;">${t.element}</span>`;
+        html += `<span class="probability">(${(t.probability * 100).toFixed(1)}%)</span>`;
+      });
+
+      html += `</div>`;
+    });
+
+    sampleTransitionsEl.innerHTML = html;
+  } catch (error) {
+    console.error("Error updating sample transitions:", error);
+    sampleTransitionsEl.innerHTML =
+      '<div style="color: #6c757d; text-align: center; padding: 20px">Error loading transitions</div>';
   }
 }
 

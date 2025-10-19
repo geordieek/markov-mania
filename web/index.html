@@ -14,7 +14,7 @@
         padding: 24px;
       }
       .container {
-        max-width: 800px;
+        max-width: 1000px;
         margin: 0 auto;
       }
       h1 {
@@ -160,7 +160,7 @@
         padding: 8px 12px;
         font-weight: 600;
         text-align: center;
-        min-width: 80px;
+        min-width: 60px;
         height: 60px;
         position: relative;
         display: flex;
@@ -168,7 +168,7 @@
         justify-content: center;
         align-items: center;
         transition: all 0.2s ease;
-        flex: 1;
+        flex-shrink: 0;
         overflow: hidden;
         box-sizing: border-box;
       }
@@ -273,6 +273,43 @@
         box-shadow: 0 0 15px rgba(123, 31, 162, 0.8), 0 0 30px rgba(123, 31, 162, 0.4);
         transform: scale(1.05);
       }
+
+      .learning-visualization {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        min-height: 200px;
+      }
+
+      .state-node {
+        display: inline-block;
+        background: #667eea;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin: 5px;
+        font-weight: bold;
+      }
+
+      .transition-arrow {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 20px;
+        color: #4a5568;
+      }
+
+      .probability {
+        font-size: 12px;
+        color: #666;
+        margin-left: 5px;
+      }
+
+      @media (max-width: 768px) {
+        .stats {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
@@ -310,8 +347,18 @@
             text-align: center;
           "
         >
-          <p>Drop MIDI files here or click to select</p>
-          <input type="file" id="midiFileInput" accept=".mid,.midi" style="display: none" />
+          <p>Drop MIDI files here or click to select (multiple files supported)</p>
+          <input
+            type="file"
+            id="midiFileInput"
+            accept=".mid,.midi"
+            multiple
+            style="display: none"
+          />
+        </div>
+        <div id="uploadedFilesList" style="margin-top: 12px; display: none">
+          <h4 style="margin: 0 0 8px 0; color: #374151; font-size: 14px">Uploaded MIDI Files:</h4>
+          <div id="filesList" style="font-size: 12px; color: #6c757d"></div>
         </div>
       </div>
 
@@ -469,6 +516,15 @@
             line-height: 1.4;
           "
         ></div>
+      </div>
+
+      <div class="card">
+        <label>Sample Transitions:</label>
+        <div id="sampleTransitions" class="learning-visualization">
+          <div style="color: #6c757d; text-align: center; padding: 20px">
+            Train the chain to see sample transitions
+          </div>
+        </div>
       </div>
 
       <div class="card">
