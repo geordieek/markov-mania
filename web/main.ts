@@ -21,6 +21,10 @@ const analysisEl = document.getElementById("analysis") as HTMLDivElement;
 const orderEl = document.getElementById("order") as HTMLSelectElement;
 const instrumentEl = document.getElementById("instrument") as HTMLSelectElement;
 const pianoStatusEl = document.getElementById("pianoStatus") as HTMLDivElement;
+const preventRepetitionEl = document.getElementById("preventRepetition") as HTMLSelectElement;
+const maxRepetitionEl = document.getElementById("maxRepetition") as HTMLInputElement;
+const restartIntervalEl = document.getElementById("restartInterval") as HTMLInputElement;
+const longTermPreventionEl = document.getElementById("longTermPrevention") as HTMLSelectElement;
 
 // Markov chain instance
 const config: MarkovConfig = { order: 4, smoothing: 0.1, temperature: 1.5 };
@@ -144,6 +148,34 @@ instrumentEl.addEventListener("change", () => {
   console.log(`Switched to ${instrument} instrument`);
 });
 
+// Update max repetition setting
+maxRepetitionEl.addEventListener("input", () => {
+  const maxRepetition = parseInt(maxRepetitionEl.value);
+
+  // Update the display value
+  const maxRepetitionValueEl = document.getElementById("maxRepetitionValue");
+  if (maxRepetitionValueEl) {
+    maxRepetitionValueEl.textContent = `${maxRepetition} consecutive note${
+      maxRepetition > 1 ? "s" : ""
+    }`;
+  }
+
+  console.log("Max repetition set to:", maxRepetition);
+});
+
+// Update restart interval setting
+restartIntervalEl.addEventListener("input", () => {
+  const restartInterval = parseInt(restartIntervalEl.value);
+
+  // Update the display value
+  const restartIntervalValueEl = document.getElementById("restartIntervalValue");
+  if (restartIntervalValueEl) {
+    restartIntervalValueEl.textContent = `Every ${restartInterval} notes`;
+  }
+
+  console.log("Restart interval set to:", restartInterval);
+});
+
 // State
 let isTrained = false;
 let currentSequence: string[] = [];
@@ -259,7 +291,21 @@ trainBtn.addEventListener("click", () => {
     // Update analysis after training
     updateAnalysis();
     updateTransitions(sequences);
-    outputEl.textContent = `Trained with ${sequences.length} sequences! Click "Generate New Sequence" to create music.`;
+
+    // Show training quality analysis
+    const qualityAnalysis = musicChain.analyzeTrainingQuality();
+    const qualityMessage =
+      `Trained with ${sequences.length} sequences!\n\nTraining Quality Analysis:\n` +
+      `• Total States: ${qualityAnalysis.totalStates}\n` +
+      `• Low Entropy States: ${qualityAnalysis.lowEntropyStates}\n` +
+      `• High Repetition States: ${qualityAnalysis.highRepetitionStates}\n` +
+      `• Avg Transitions/State: ${qualityAnalysis.averageTransitionsPerState.toFixed(2)}\n\n` +
+      (qualityAnalysis.recommendations.length > 0
+        ? `Recommendations:\n${qualityAnalysis.recommendations.map((r) => `• ${r}`).join("\n")}\n\n`
+        : "") +
+      `Click "Generate New Sequence" to create music.`;
+
+    outputEl.textContent = qualityMessage;
     rhythmOutputEl.innerHTML =
       '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Generated sequence will appear here after generation</div>';
   } catch (error) {
@@ -281,7 +327,29 @@ generateBtn.addEventListener("click", () => {
 
     // Generate unified music sequence (treats all tokens equally)
     console.log("Generating unified music sequence");
-    const music = musicChain.generateSequence(requestedLength);
+
+    // Check if repetition prevention is enabled
+    const preventRepetition = preventRepetitionEl.value === "true";
+    const maxRepetition = parseInt(maxRepetitionEl.value);
+    const restartInterval = parseInt(restartIntervalEl.value);
+    const enableLongTermPrevention = longTermPreventionEl.value === "true";
+
+    let music;
+    if (preventRepetition) {
+      // Use repetition prevention method
+      const musicTokens = musicChain.generateWithRepetitionPrevention(
+        requestedLength,
+        undefined,
+        maxRepetition,
+        restartInterval,
+        enableLongTermPrevention
+      );
+      const rhythm = musicChain.getRhythmChain().generate(requestedLength);
+      music = musicChain.convertTokensToMusicSequence(musicTokens, rhythm);
+    } else {
+      // Use original method
+      music = musicChain.generateSequence(requestedLength);
+    }
 
     // Extract music tokens from the generated sequence
     // Group notes by startTime to handle chords properly
@@ -520,12 +588,22 @@ async function handleMIDIImport(file: File): Promise<void> {
       }
     }
 
-    // Update training data textarea
-    trainingDataEl.value = trainingData.join("\n");
+    // Append training data to existing content
+    const existingData = trainingDataEl.value.trim();
+    const newData = trainingData.join("\n");
+
+    if (existingData) {
+      // Add a newline separator if there's existing data
+      trainingDataEl.value = existingData + "\n" + newData;
+    } else {
+      // If no existing data, just set the new data
+      trainingDataEl.value = newData;
+    }
 
     // Show MIDI stats
+    const appendMessage = existingData ? " (appended to existing data)" : "";
     outputEl.textContent =
-      `MIDI imported successfully!\n\n` +
+      `MIDI imported successfully${appendMessage}!\n\n` +
       `Tracks: ${stats.totalTracks}\n` +
       `Total Notes: ${stats.totalNotes}\n` +
       `Duration: ${(stats.duration / 1000).toFixed(1)}s\n` +

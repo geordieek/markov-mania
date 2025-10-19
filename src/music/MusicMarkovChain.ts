@@ -68,7 +68,8 @@ export class MusicMarkovChain extends MarkovChain {
    */
   generateSequence(sequenceLength: number = 16): MusicSequence {
     // Generate musical tokens (notes and chords) from the main chain
-    const musicTokens = this.generate(sequenceLength);
+    // Use repetition prevention to avoid getting stuck in loops
+    const musicTokens = this.generateWithRepetitionPrevention(sequenceLength, undefined, 2);
     const rhythm = this.generateRhythm(sequenceLength);
 
     // Convert tokens to musical sequence
@@ -100,7 +101,7 @@ export class MusicMarkovChain extends MarkovChain {
   /**
    * Convert musical tokens to a MusicSequence
    */
-  private convertTokensToMusicSequence(tokens: string[], rhythm: string[]): MusicSequence {
+  public convertTokensToMusicSequence(tokens: string[], rhythm: string[]): MusicSequence {
     const notes: Note[] = [];
     let currentTime = 0;
     let lastPitch: number | null = null;

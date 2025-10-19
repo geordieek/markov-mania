@@ -147,6 +147,173 @@ export class MarkovChain {
   }
 
   /**
+   * Generate a sequence with repetition prevention
+   * This method actively prevents repetitive patterns by tracking recent elements
+   */
+  generateWithRepetitionPrevention(
+    length: number,
+    startContext?: string[],
+    maxRepetition: number = 3,
+    restartInterval?: number,
+    enableLongTermPrevention: boolean = true
+  ): string[] {
+    const sequence: string[] = [];
+    let currentContext = startContext || this.getRandomStartContext();
+    const recentElements: string[] = [];
+    const actualRestartInterval = restartInterval || Math.min(32, Math.floor(length / 4)); // Restart every 1/4 of sequence length
+
+    for (let i = 0; i < length; i++) {
+      // Periodic restart to prevent long-term repetition
+      if (i > 0 && i % actualRestartInterval === 0 && i < length - 4) {
+        // Restart with a new random context to break repetitive patterns
+        currentContext = this.getRandomStartContext();
+        console.log(`Restarting context at position ${i} to prevent repetition`);
+      }
+
+      const contextKey = currentContext.join("|");
+      const state = this.states.get(contextKey);
+
+      let selectedElement = "";
+      let attempts = 0;
+      const maxAttempts = 15; // Increased attempts for longer sequences
+
+      while (attempts < maxAttempts) {
+        let candidateElement = "";
+
+        if (!state || state.transitions.size === 0) {
+          // Use fallback state
+          const fallbackState = this.findFallbackState(currentContext);
+          if (!fallbackState) break;
+
+          const transitions = this.applyTemperature(fallbackState.transitions);
+          candidateElement = this.selectFromTransitions(transitions);
+        } else {
+          // Use normal state
+          const transitions = this.applyTemperature(state.transitions);
+          candidateElement = this.selectFromTransitions(transitions);
+        }
+
+        // Check if this element would create too much repetition
+        if (this.wouldCreateExcessiveRepetition(candidateElement, recentElements, maxRepetition)) {
+          attempts++;
+          continue;
+        }
+
+        // Additional check for longer-term patterns
+        if (
+          enableLongTermPrevention &&
+          this.wouldCreateLongTermRepetition(candidateElement, sequence, i)
+        ) {
+          attempts++;
+          continue;
+        }
+
+        selectedElement = candidateElement;
+        break;
+      }
+
+      // If we couldn't find a non-repetitive element, use the best available
+      if (!selectedElement) {
+        const fallbackState = this.findFallbackState(currentContext);
+        if (fallbackState) {
+          const transitions = this.applyTemperature(fallbackState.transitions);
+          selectedElement = this.selectFromTransitions(transitions);
+        } else {
+          break;
+        }
+      }
+
+      sequence.push(selectedElement);
+
+      // Update recent elements tracking
+      recentElements.push(selectedElement);
+      if (recentElements.length > maxRepetition * 2) {
+        recentElements.shift();
+      }
+
+      // Update context for next iteration
+      currentContext = [...currentContext.slice(1), selectedElement];
+    }
+
+    return sequence;
+  }
+
+  /**
+   * Check if adding an element would create excessive repetition
+   */
+  private wouldCreateExcessiveRepetition(
+    element: string,
+    recentElements: string[],
+    maxRepetition: number
+  ): boolean {
+    if (recentElements.length < maxRepetition) return false;
+
+    // Check if the last maxRepetition elements are all the same as the candidate
+    const lastElements = recentElements.slice(-maxRepetition);
+    return lastElements.every((e) => e === element);
+  }
+
+  /**
+   * Check if adding an element would create long-term repetitive patterns
+   * This detects patterns that repeat over longer spans of the sequence
+   */
+  private wouldCreateLongTermRepetition(
+    element: string,
+    sequence: string[],
+    currentIndex: number
+  ): boolean {
+    if (sequence.length < 8) return false; // Need enough history
+
+    // Check for patterns of length 2-4 that might be repeating
+    for (let patternLength = 2; patternLength <= 4; patternLength++) {
+      if (currentIndex < patternLength * 2) continue;
+
+      // Look for the pattern ending with the candidate element
+      const candidatePattern = [...sequence.slice(-patternLength + 1), element];
+
+      // Check if this pattern has appeared recently
+      for (let i = 0; i <= sequence.length - patternLength; i++) {
+        const existingPattern = sequence.slice(i, i + patternLength);
+        if (this.arraysEqual(candidatePattern, existingPattern)) {
+          // Pattern found - check if it's too recent
+          const distance = currentIndex - i;
+          if (distance < patternLength * 2) {
+            return true; // Pattern too recent, would create repetition
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Helper method to compare arrays
+   */
+  private arraysEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((val, index) => val === b[index]);
+  }
+
+  /**
+   * Select an element from transitions using weighted random selection
+   */
+  private selectFromTransitions(transitions: Map<string, number>): string {
+    const random = Math.random();
+    let cumulativeProbability = 0;
+
+    for (const [element, probability] of transitions) {
+      cumulativeProbability += probability;
+      if (random <= cumulativeProbability) {
+        return element;
+      }
+    }
+
+    // Fallback to first element
+    return Array.from(transitions.keys())[0] || "";
+  }
+
+  /**
    * Generate a sequence with detailed step-by-step information
    */
   generateWithSteps(
@@ -308,6 +475,7 @@ export class MarkovChain {
 
   /**
    * Find a fallback state when the current context doesn't exist
+   * prefers states with higher entropy (more diverse transitions)
    */
   private findFallbackState(context: string[]): MarkovState | null {
     // Try to find a state with a similar context (shorter context)
@@ -316,18 +484,41 @@ export class MarkovChain {
       const contextKey = shorterContext.join("|");
       const state = this.states.get(contextKey);
       if (state && state.transitions.size > 0) {
-        return state;
+        // Prefer states with more diverse transitions
+        if (this.calculateStateEntropy(state) > 0.5) {
+          return state;
+        }
       }
     }
 
-    // If no shorter context works, try to find any state with transitions
+    // If no shorter context works, find the state with highest entropy
+    let bestState: MarkovState | null = null;
+    let bestEntropy = 0;
+
     for (const state of this.states.values()) {
       if (state.transitions.size > 0) {
-        return state;
+        const entropy = this.calculateStateEntropy(state);
+        if (entropy > bestEntropy) {
+          bestEntropy = entropy;
+          bestState = state;
+        }
       }
     }
 
-    return null;
+    return bestState;
+  }
+
+  /**
+   * Calculate entropy of a state to measure transition diversity
+   */
+  private calculateStateEntropy(state: MarkovState): number {
+    let entropy = 0;
+    for (const probability of state.transitions.values()) {
+      if (probability > 0) {
+        entropy -= probability * Math.log2(probability);
+      }
+    }
+    return entropy;
   }
 
   /**
@@ -561,5 +752,72 @@ export class MarkovChain {
   reset(): void {
     this.states.clear();
     this.trainingData = [];
+  }
+
+  /**
+   * Analyze the quality of training data and suggest improvements
+   */
+  analyzeTrainingQuality(): {
+    totalStates: number;
+    lowEntropyStates: number;
+    highRepetitionStates: number;
+    averageTransitionsPerState: number;
+    recommendations: string[];
+  } {
+    const recommendations: string[] = [];
+    let lowEntropyStates = 0;
+    let highRepetitionStates = 0;
+    let totalTransitions = 0;
+
+    for (const state of this.states.values()) {
+      totalTransitions += state.transitions.size;
+      const entropy = this.calculateStateEntropy(state);
+
+      if (entropy < 0.5) {
+        lowEntropyStates++;
+      }
+
+      // Check for states with very high probability for one transition
+      const maxProbability = Math.max(...state.transitions.values());
+      if (maxProbability > 0.8) {
+        highRepetitionStates++;
+      }
+    }
+
+    const averageTransitionsPerState =
+      this.states.size > 0 ? totalTransitions / this.states.size : 0;
+
+    // Generate recommendations
+    if (lowEntropyStates > this.states.size * 0.3) {
+      recommendations.push(
+        "Many states have low entropy. Consider adding more diverse training data."
+      );
+    }
+
+    if (highRepetitionStates > this.states.size * 0.2) {
+      recommendations.push(
+        "Many states have highly repetitive patterns. Consider reducing order or adding more varied sequences."
+      );
+    }
+
+    if (averageTransitionsPerState < 2) {
+      recommendations.push(
+        "States have very few transitions. Consider reducing the order parameter or adding more training data."
+      );
+    }
+
+    if (this.states.size < 10) {
+      recommendations.push(
+        "Very few states learned. Consider adding more training sequences or reducing the order parameter."
+      );
+    }
+
+    return {
+      totalStates: this.states.size,
+      lowEntropyStates,
+      highRepetitionStates,
+      averageTransitionsPerState,
+      recommendations,
+    };
   }
 }

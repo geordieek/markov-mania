@@ -187,8 +187,11 @@
 
       .rhythm-fraction {
         font-size: 10px;
-        opacity: 0.7;
-        margin-top: 2px;
+        opacity: 0.2;
+        position: absolute;
+        bottom: 2px;
+        right: 6px;
+        margin: 0;
       }
 
       .rhythm-item[data-rhythm="1"] {
@@ -374,11 +377,58 @@
             </div>
           </div>
         </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <label for="preventRepetition">Repetition Prevention:</label>
+            <select id="preventRepetition">
+              <option value="true" selected>Enabled (Recommended)</option>
+              <option value="false">Disabled (Original)</option>
+            </select>
+            <div style="font-size: 12px; color: #6c757d">
+              Prevents excessive repetition of the same note
+            </div>
+          </div>
+          <div>
+            <label for="maxRepetition">Max Repetition:</label>
+            <input id="maxRepetition" type="range" min="1" max="5" step="1" value="2" />
+            <div
+              style="font-size: 12px; color: #6c757d; text-align: center"
+              id="maxRepetitionValue"
+            >
+              2 consecutive notes
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px">
+          <div>
+            <label for="restartInterval">Restart Interval:</label>
+            <input id="restartInterval" type="range" min="8" max="64" step="8" value="32" />
+            <div
+              style="font-size: 12px; color: #6c757d; text-align: center"
+              id="restartIntervalValue"
+            >
+              Every 32 notes
+            </div>
+            <div style="font-size: 11px; color: #6c757d">
+              Prevents long-term repetition in longer sequences
+            </div>
+          </div>
+          <div>
+            <label for="longTermPrevention">Long-term Prevention:</label>
+            <select id="longTermPrevention">
+              <option value="true" selected>Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+            <div style="font-size: 12px; color: #6c757d">
+              Detects and prevents repeating patterns
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
         <label for="sequenceLength">Sequence Length:</label>
-        <input id="sequenceLength" type="number" min="4" value="128" />
+        <input id="sequenceLength" type="number" min="4" value="64" />
         <div class="button-group">
           <button id="generate" class="primary">Generate New Sequence</button>
           <button id="play" disabled>Play Sequence</button>
@@ -411,6 +461,16 @@
             </div>
           </div>
         </div>
+        <div
+          id="output"
+          style="
+            min-height: 40px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.4;
+          "
+        ></div>
       </div>
 
       <div class="card">
