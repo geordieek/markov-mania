@@ -18,6 +18,7 @@ const rhythmOutputEl = document.getElementById("rhythmOutput") as HTMLDivElement
 const transitionsEl = document.getElementById("transitions") as HTMLDivElement;
 const statsEl = document.getElementById("stats") as HTMLDivElement;
 const analysisEl = document.getElementById("analysis") as HTMLDivElement;
+const complexityEl = document.getElementById("complexity") as HTMLDivElement;
 const orderEl = document.getElementById("order") as HTMLSelectElement;
 const instrumentEl = document.getElementById("instrument") as HTMLSelectElement;
 const pianoStatusEl = document.getElementById("pianoStatus") as HTMLDivElement;
@@ -28,6 +29,10 @@ const longTermPreventionEl = document.getElementById("longTermPrevention") as HT
 
 // New elements from learning demo
 const sampleTransitionsEl = document.getElementById("sampleTransitions") as HTMLDivElement;
+
+// Visualization elements
+const showGraphBtn = document.getElementById("showGraph") as HTMLButtonElement;
+const showMatrixBtn = document.getElementById("showMatrix") as HTMLButtonElement;
 
 // Markov chain instance
 const config: MarkovConfig = { order: 4, smoothing: 0.1, temperature: 1.5 };
@@ -64,6 +69,10 @@ smoothingEl.addEventListener("input", () => {
     if (analysisEl) {
       analysisEl.innerHTML =
         '<div style="color: #6c757d; text-align: center; padding: 20px;">Analysis will appear after retraining</div>';
+    }
+    if (complexityEl) {
+      complexityEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px;">Complexity analysis will appear after retraining</div>';
     }
   }
 });
@@ -125,13 +134,16 @@ orderEl.addEventListener("change", () => {
     currentRhythms = [];
     updateUI();
     updateTransitions([]);
-    outputEl.textContent = "Order changed. Please retrain the Markov chain.";
     rhythmOutputEl.innerHTML =
       '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Generated sequence will appear here after generation</div>';
     // Clear analysis since we need to retrain
     if (analysisEl) {
       analysisEl.innerHTML =
         '<div style="color: #6c757d; text-align: center; padding: 20px;">Analysis will appear after retraining</div>';
+    }
+    if (complexityEl) {
+      complexityEl.innerHTML =
+        '<div style="color: #6c757d; text-align: center; padding: 20px;">Complexity analysis will appear after retraining</div>';
     }
   }
 });
@@ -177,6 +189,129 @@ restartIntervalEl.addEventListener("input", () => {
   }
 
   console.log("Restart interval set to:", restartInterval);
+});
+
+// Visualization event handlers
+showGraphBtn.addEventListener("click", async () => {
+  if (!isTrained) {
+    alert("Please train the Markov chain first!");
+    return;
+  }
+
+  try {
+    const noteChain = musicChain.getNoteChain();
+    const states = noteChain.getStates();
+    const serializedData = {
+      states: states.map((state) => ({
+        id: state.id,
+        transitions: Array.from(state.transitions.entries()),
+      })),
+    };
+
+    const graphWindow = window.open(
+      "",
+      "_blank",
+      "width=1200,height=800,scrollbars=yes,resizable=yes"
+    );
+
+    if (graphWindow) {
+      graphWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markov Chain Graph Visualization</title>
+          <style>
+            body { margin: 0; padding: 20px; font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; }
+            #graph-container { width: 100%; height: calc(100vh - 40px); border: 1px solid #dee2e6; border-radius: 8px; background: white; }
+            .loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <h2>Markov Chain Graph Visualization</h2>
+          <div id="graph-container">
+            <div class="loading">Loading graph visualization...</div>
+          </div>
+          <script type="module">
+            // Import the visualization module
+            import('./markovVisualization.js').then(module => {
+              const noteChainData = ${JSON.stringify(serializedData)};
+              module.createGraphVisualization(noteChainData, document.getElementById('graph-container'));
+            }).catch(error => {
+              document.getElementById('graph-container').innerHTML = 
+                '<div style="color: #dc3545; text-align: center; padding: 20px">Error loading visualization: ' + error + '</div>';
+            });
+          </script>
+        </body>
+        </html>
+      `);
+      graphWindow.document.close();
+    } else {
+      alert("Please allow popups for this site to view the visualization.");
+    }
+  } catch (error) {
+    alert(`Error creating graph: ${error}`);
+  }
+});
+
+showMatrixBtn.addEventListener("click", () => {
+  if (!isTrained) {
+    alert("Please train the Markov chain first!");
+    return;
+  }
+
+  try {
+    const noteChain = musicChain.getNoteChain();
+    const states = noteChain.getStates();
+    const serializedData = {
+      states: states.map((state) => ({
+        id: state.id,
+        transitions: Array.from(state.transitions.entries()),
+      })),
+    };
+
+    const matrixWindow = window.open(
+      "",
+      "_blank",
+      "width=1200,height=800,scrollbars=yes,resizable=yes"
+    );
+
+    if (matrixWindow) {
+      matrixWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markov Chain Transition Matrix</title>
+          <style>
+            body { margin: 0; padding: 20px; font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; }
+            #matrix-container { width: 100%; height: calc(100vh - 40px); border: 1px solid #dee2e6; border-radius: 8px; background: white; }
+            .loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <h2>Markov Chain Transition Matrix</h2>
+          <div id="matrix-container">
+            <div class="loading">Loading transition matrix...</div>
+          </div>
+          <script type="module">
+            // Import the visualization module
+            import('./markovVisualization.js').then(module => {
+              const noteChainData = ${JSON.stringify(serializedData)};
+              module.createTransitionMatrix(noteChainData, document.getElementById('matrix-container'));
+            }).catch(error => {
+              document.getElementById('matrix-container').innerHTML = 
+                '<div style="color: #dc3545; text-align: center; padding: 20px">Error loading matrix: ' + error + '</div>';
+            });
+          </script>
+        </body>
+        </html>
+      `);
+      matrixWindow.document.close();
+    } else {
+      alert("Please allow popups for this site to view the visualization.");
+    }
+  } catch (error) {
+    alert(`Error creating matrix: ${error}`);
+  }
 });
 
 // State
@@ -295,20 +430,6 @@ trainBtn.addEventListener("click", () => {
     updateAnalysis();
     updateTransitions(sequences);
 
-    // Show training quality analysis
-    const qualityAnalysis = musicChain.analyzeTrainingQuality();
-    const qualityMessage =
-      `Trained with ${sequences.length} sequences!\n\nTraining Quality Analysis:\n` +
-      `• Total States: ${qualityAnalysis.totalStates}\n` +
-      `• Low Entropy States: ${qualityAnalysis.lowEntropyStates}\n` +
-      `• High Repetition States: ${qualityAnalysis.highRepetitionStates}\n` +
-      `• Avg Transitions/State: ${qualityAnalysis.averageTransitionsPerState.toFixed(2)}\n\n` +
-      (qualityAnalysis.recommendations.length > 0
-        ? `Recommendations:\n${qualityAnalysis.recommendations.map((r) => `• ${r}`).join("\n")}\n\n`
-        : "") +
-      `Click "Generate New Sequence" to create music.`;
-
-    outputEl.textContent = qualityMessage;
     rhythmOutputEl.innerHTML =
       '<div style="color: #6c757d; text-align: center; padding: 20px; width: 100%;">Generated sequence will appear here after generation</div>';
   } catch (error) {
@@ -418,8 +539,7 @@ generateBtn.addEventListener("click", () => {
       .map((note, index) => {
         const rhythm = currentRhythms[index] || "4";
         const fraction = getRhythmFraction(rhythm);
-        const width = getRhythmWidth(rhythm);
-        return `<div class="rhythm-item" data-rhythm="${rhythm}" data-rhythm-fraction="${fraction}" style="width: ${width}px">
+        return `<div class="rhythm-item" data-rhythm="${rhythm}" data-rhythm-fraction="${fraction}">
           <div class="rhythm-note">${note}</div>
           <div class="rhythm-fraction">${fraction}</div>
         </div>`;
@@ -729,27 +849,13 @@ function getRhythmFraction(rhythm: string): string {
   return `1/4`;
 }
 
-// Get width for rhythm item based on duration
-function getRhythmWidth(rhythm: string): number {
-  // Base width for quarter note (4) is 80px
-  const baseWidth = 80;
-
-  if (/^\d+$/.test(rhythm)) {
-    const rhythmNumber = parseInt(rhythm, 10);
-    // Calculate width based on rhythm duration
-    // Longer notes get wider boxes
-    return Math.max(60, baseWidth * (4 / rhythmNumber));
-  }
-
-  // Fallback to quarter note width
-  return baseWidth;
-}
-
 // Update UI state
 function updateUI() {
   generateBtn.disabled = !isTrained;
   playBtn.disabled = !isTrained || !currentSequence.length;
   stopBtn.disabled = !audioManager.isCurrentlyPlaying();
+  showGraphBtn.disabled = !isTrained;
+  showMatrixBtn.disabled = !isTrained;
 }
 
 // Update transitions display
@@ -939,8 +1045,29 @@ function updateAnalysis() {
       <strong>Deterministic States:</strong> ${automataMetrics.deterministicStates}<br>
       <strong>Probabilistic States:</strong> ${automataMetrics.probabilisticStates}<br>
       <strong>State Complexity:</strong> ${automataMetrics.stateComplexity.toFixed(2)}<br>
-      <strong>Novelty Score:</strong> ${(entropyMetrics.noveltyScore * 100).toFixed(1)}%<br>
-      <strong>Bottleneck:</strong> ${complexityMetrics.bottleneck}<br>
+      <strong>Novelty Score:</strong> ${(entropyMetrics.noveltyScore * 100).toFixed(1)}%
+    `;
+
+    // Display complexity analysis
+    const severityColor =
+      complexityMetrics.severity === "high"
+        ? "#dc2626"
+        : complexityMetrics.severity === "medium"
+        ? "#d97706"
+        : "#16a34a";
+
+    complexityEl.innerHTML = `
+      <strong>Bottleneck:</strong> <span style="color: ${severityColor}">${
+      complexityMetrics.bottleneck
+    }</span><br>
+      <strong>Severity:</strong> <span style="color: ${severityColor}">${
+      complexityMetrics.severity
+    }</span><br>
+      <strong>State Count:</strong> ${complexityMetrics.metrics.stateCount.toLocaleString()}<br>
+      <strong>Avg Transitions:</strong> ${complexityMetrics.metrics.avgTransitionsPerState.toFixed(
+        2
+      )}<br>
+      <strong>Memory Usage:</strong> ${complexityMetrics.metrics.memoryUsage.toFixed(2)} MB<br>
       <strong>Recommendation:</strong> ${complexityMetrics.recommendation}
     `;
 
@@ -949,6 +1076,7 @@ function updateAnalysis() {
   } catch (error) {
     statsEl.innerHTML = "Error getting statistics";
     analysisEl.innerHTML = "Error getting analysis";
+    complexityEl.innerHTML = "Error getting complexity analysis";
   }
 }
 
@@ -966,7 +1094,7 @@ function updateSampleTransitions() {
       return;
     }
 
-    let html = "<h4>Sample Transitions:</h4>";
+    let html = "";
     analysis.sampleTransitions.slice(0, 8).forEach((transition) => {
       html += `<div style="margin: 10px 0;">`;
       html += `<span class="state-node">${transition.context}</span>`;

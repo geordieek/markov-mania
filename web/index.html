@@ -378,9 +378,9 @@
             <label for="order">Order (Context Length):</label>
             <select id="order">
               <option value="1">1 (Simple)</option>
-              <option value="2">2 (Balanced)</option>
+              <option value="2" selected>2 (Balanced)</option>
               <option value="3">3 (Complex)</option>
-              <option value="4" selected>4 (Very Complex)</option>
+              <option value="4">4 (Very Complex)</option>
             </select>
           </div>
           <div>
@@ -505,19 +505,19 @@
           style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px"
         >
           <div>
-            <h4 style="margin: 0 0 8px 0; color: #374151">Statistics</h4>
+            <h4 style="margin: 0 0 8px 0">Statistics</h4>
             <div id="stats" style="font-size: 16px; line-height: 1.4">
               Train the chain to see statistics
             </div>
           </div>
           <div>
-            <h4 style="margin: 0 0 8px 0; color: #374151">Transition Analysis</h4>
+            <h4 style="margin: 0 0 8px 0">Transition Analysis</h4>
             <div id="analysis" style="font-size: 16px; line-height: 1.4">
               Train the chain to see analysis
             </div>
           </div>
           <div>
-            <h4 style="margin: 0 0 8px 0; color: #374151">Complexity Analysis</h4>
+            <h4 style="margin: 0 0 8px 0">Complexity Analysis</h4>
             <div id="complexity" style="font-size: 16px; line-height: 1.4">
               Train the chain to see complexity analysis
             </div>
@@ -545,6 +545,15 @@
       </div>
 
       <div class="card">
+        <label>Markov Chain Visualization: (BETA)</label>
+        <div style="margin-bottom: 16px">
+          <button id="showGraph" class="secondary" style="margin-right: 8px">Show Graph</button>
+          <button id="showMatrix" class="secondary">Show Transition Matrix</button>
+        </div>
+      </div>
+
+      <!-- NOTE: This is intentionally commented out for now. In favour of the 'sample transitions'. Might be worth to fix up and add back later as a debugger of sorts.-->
+      <div class="card" style="display: none">
         <label>Markov Chain Transitions:</label>
         <div id="transitions" class="transitions-display">
           <div style="color: #6c757d; text-align: center; padding: 20px">
